@@ -4,13 +4,13 @@ Since this project is still under developing,  full description is not yet writt
 
 ## Recently it contains:
 ## 1. ED cluster solver for fermion 1/2 system. 
-Any kind of interacting can be easily appended to the Hamiltonian. Real and Complex Hamiltonian can be distinguished. Symmetry (U1, SU2) can be used.
+Any kind of interacting can be easily appended to the Hamiltonian. Real and Complex Hamiltonian can be distinguished. Symmetry (U1, SU2) can be used. For zero temperature and finite temperature we can use:
 
 
-  1-1. Lanczos solver(for zero temperature)
+###  1-1. Lanczos solver(for zero temperature)
 Any physical quantities, single particle Green's function, and two-particle Green's function can be calculated.
 
-  1-2. Household Method(finite temperature)
+###  1-2. Household Method(finite temperature)
 Any physical quantities and single particle Green's function can be calculated. 
 
 ## 2. Optimization 
