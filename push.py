@@ -16,9 +16,9 @@ import password as pw
 
 username = pw.GetAutoPasswd('git','username').get()
 password = pw.GetAutoPasswd('git','password').get()
+project  = pw.GetAutoPasswd('git','project').get()
 #------------------------------------------------------
 
-project = "github.com/HengyueLi/MyFortranLib"
 
 
 import datetime,os
