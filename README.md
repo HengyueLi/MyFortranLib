@@ -1,9 +1,10 @@
-## This is a personal Fortran lib, most of which will be used to build a Variational Cluster Approach (VCA) package. 
+# This is a personal Fortran lib, most of which will be used to build a Variational Cluster Approach (VCA) package. 
 
 Since this project is still under developing,  full description is not yet written. Later this project may be published by using the other kind of license. 
 
 ## Recently it contains:
-## 1. ED cluster solver for fermion 1/2 system. Any kind of interacting can be easily appended to the Hamiltonian. Real and Complex Hamiltonian can be distinguished. Symmetry (U1, SU2) can be used.
+## 1. ED cluster solver for fermion 1/2 system. 
+Any kind of interacting can be easily appended to the Hamiltonian. Real and Complex Hamiltonian can be distinguished. Symmetry (U1, SU2) can be used.
 
 
   1-1. Lanczos solver(for zero temperature)
