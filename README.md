@@ -1,6 +1,6 @@
 # This is a personal Fortran lib, most of which will be used to build a Variational Cluster Approach (VCA) package. 
 
-Since this project is still under developing,  full description is not yet written. Later this project may be published by using the other kind of license. 
+Since this project is still under developing, a full description is not yet written. Later this project may be published by using the other kind of license. (Right now, I do not have a clear understanding of the differences of licenses.)
 
 ## Recently it contains:
 ## 1. ED cluster solver for fermion 1/2 system. 
