@@ -5,7 +5,7 @@ import datetime,os
 
 
 time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
+print(time)
 gitadd = "git add .;"
 gitcom = "git commit -m "+"\""+time+"\";"
 gitpus = "git push -u origin master --force;"
