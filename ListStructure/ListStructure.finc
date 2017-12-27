@@ -1,0 +1,300 @@
+
+
+!!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+! TYPE  : Include
+! NAME  : ListStructure
+! OBJECT: TYPE(ListStru)
+! USED  :
+! DATE  : 2017-11-30
+! AUTHOR: hengyueli@gmail.com
+!--------------
+! Open-Source : No
+!------------------
+! DESCRIPTION:
+!            A list Structure
+!
+! STANDARD:
+!            *C
+!
+! USING LIST:
+!            :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+!
+!
+! avalable sets:
+!                  [sub] Initialization(*print)
+!
+!                  [sub] append(dat)
+!                        dat: extented data type
+!
+!                  [sub] Inser(i,dat)
+!                        inser dat into list. The position will be i+1
+!                        befor: ...,i-1,i     ,i+1
+!                        after: ...,i-1,i,dat,i+1
+!
+!                  [sub] delete(i)
+!                        delete the element of index i .
+!
+!                  [sub] SetMark(i)
+!                        integer::i
+!                        set a mark at i. Used with GetNextPointer
+!                        i can be -1 which represent null()
+! avalable gets:
+!                  [fun] GetLen()
+!                        return integer
+!
+!                  [fun] GetDataPointer(i)  !!!!!!!!!!! DANGOURS function !!!!!!
+!                        integer::i   index
+!                        return an extented data pointer
+!                        the pointer points the data in the list, this will be dangours!!!!!
+!
+!
+!                  [fun] GetMarkedPointerAndNext()
+!                        output: return a data pointer ar market position. Meanwhile, move mark to next.
+!
+! avalable is :
+!                  [fun] i
+! others      :
+!                  [sub] p
+!
+!
+!!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+
+! module ListStructure
+    ! use DataModule, dat => DefinedData
+  implicit none
+
+!  type data
+!       ! to be extended
+!  endtype
+
+   type,private::link
+     class(data),pointer :: V     => null()  !data
+     class(link),pointer :: next  => null()
+     class(link),pointer :: last  => null()
+   endtype
+
+
+   type::ListStru
+     private
+     logical            :: initiated = .false.
+     integer            :: len       =  0       !
+     class(link),pointer:: l         => null()  ! the first element will not be used.
+     !------------------------
+     class(link),pointer:: Mark => null()
+     integer:: print = 6
+   contains
+     procedure,pass::Initialization
+     final::Finalization
+
+
+     procedure,pass::append
+     procedure,pass::Inser
+     procedure,pass::delete
+     procedure,pass::GetDataPointer
+     procedure,pass::SetMark
+     procedure,pass::GetMarkedPointerAndNext
+     procedure,pass::GetLen
+     procedure :: CopyBtoA
+     generic :: assignment(=) => CopyBtoA
+   endtype
+
+
+
+
+
+   private::Initialization,UnInitialization,Finalization
+
+   private::append,GetDataPointer,Inser,delete,GetLen,CopyBtoA
+
+
+
+   private::GetLinkIndexPointer,DeleteElementAndRelink,AppendElementAndRelink
+   private::SetMark,GetMarkedPointerAndNext
+
+ contains
+
+   subroutine Initialization(self,print_)
+     implicit none
+     class(ListStru),intent(inout)::self
+     integer,intent(in),optional::print_
+     !------------------------------------
+     call UnInitialization(self)
+     self%initiated = .true.
+     if (present(print_)) self%print = print_
+
+     allocate(self%l)
+     self%len = 0
+     self%l%next=>self%l
+     self%l%last=>self%l
+   endsubroutine
+
+   impure elemental subroutine Finalization(self)
+     implicit none
+     type(ListStru),intent(inout)::self
+     !------------------------------------
+     call UnInitialization(self)
+   endsubroutine
+
+   subroutine UnInitialization(self)
+     implicit none
+     class(ListStru),intent(inout)::self
+     !-----------------------------------
+     integer::jc
+     if (self%initiated)then
+        self%initiated = .false.
+        do jc = 1 , self%len
+          call DeleteElementAndRelink(self%l%next)
+        enddo
+        deallocate(self%l)
+     endif
+   endsubroutine
+
+
+   function GetLinkIndexPointer(self,i) result(p)
+     implicit none
+     class(ListStru),intent(in)::self
+     integer,intent(in)::i
+     class(link),pointer::p
+     !-----------------------------------
+     integer::jc
+     p => self%l
+     do jc = 1 , i
+        p  => p%next
+     enddo
+   endfunction
+
+
+   ! Even if p is of length 1, there is no problem.
+   ! decrease N will be set in other subroutine
+   subroutine DeleteElementAndRelink(p)
+     implicit none
+     class(link),pointer::p
+     !--------------------
+     class(link),pointer::last,next
+     last => p%last
+     next => p%next
+     deallocate(p%v)
+     deallocate(p)
+     last%next=>next
+     next%last=>last
+   endsubroutine
+
+  !  increasing N will be set in other subroutine which use this.
+  !  the new element V will be append after p.
+  !  before : [...p-1,p,  p+1,...]
+  !  after  : [...p-1,p,V,p+1,...]
+   subroutine AppendElementAndRelink(p,V)
+     implicit none
+     class(link),pointer::p
+     class(data),pointer::V    !;write(*,*)loc(p),loc(p%next),loc(p%last);stop
+     !-------------------------
+     class(link),pointer::temp
+
+     temp => p%next
+     allocate(p%next)
+     p%next%v => v
+     p%next%next => temp
+     p%next%last => p
+     temp%last   => p%next
+     v => null()
+   endsubroutine
+
+   Subroutine append(self,V)
+     Implicit none
+     class(ListStru),intent(inout)::self
+     Class(data),pointer::V
+     !----------------------------------
+     call AppendElementAndRelink(self%l%last,V)
+     self%len = self%len + 1
+   endsubroutine
+
+   subroutine Inser(self,i,v)
+     Implicit none
+     class(ListStru),intent(inout)::self
+     integer,intent(in)::i
+     Class(data),pointer::V
+     !----------------------------------
+     class(link),pointer::p
+     p =>  GetLinkIndexPointer(self,i)
+     call AppendElementAndRelink(p,V)
+   endsubroutine
+
+
+
+   function GetDataPointer(self,i) result(v)
+     Implicit none
+     class(ListStru),intent(in)::self
+     integer,intent(in)::i
+     Class(data),pointer::V
+     !----------------------------------
+     class(link),pointer::p
+     p =>  GetLinkIndexPointer(self,i)
+     v => p%v
+   endfunction
+
+   subroutine SetMark(self,i)
+     Implicit none
+     class(ListStru),intent(inout)::self
+     integer,intent(in)::i
+    !----------------------------------
+     self%mark => GetLinkIndexPointer(self,i)
+   endsubroutine
+
+
+   function GetMarkedPointerAndNext(self) result(r)
+     Implicit none
+     class(ListStru),intent(inout)::self
+     class(data),pointer::r
+    !----------------------------------
+     r => self%mark%v
+     self%mark => self%mark%next
+   endfunction
+
+
+
+
+
+   subroutine delete(self,i)
+     Implicit none
+     class(ListStru),intent(inout)::self
+     integer,intent(in)::i
+     Class(data),pointer::V
+     !----------------------------------
+     class(link),pointer::p
+     p =>  GetLinkIndexPointer(self,i)
+     call DeleteElementAndRelink(p)
+     self%len = self%len - 1
+   endsubroutine
+
+   integer function GetLen(self)
+     Implicit none
+     class(ListStru),intent(inout)::self
+     !---------------------------------------
+     GetLen = self%len
+   endfunction
+
+  subroutine CopyBtoA(a,b)
+    Implicit none
+    class(ListStru),intent(out)::a
+    class(ListStru),intent(in )::b
+    !---------------------------------------
+    class(data),pointer::toA
+    class(link),pointer::lb
+    integer::jc
+    call Initialization(a,print_=b%print)
+    lb => b%l
+    do jc = 1 , b%len
+         lb => lb%next                    !;write(*,*)lb%v%v
+         allocate(toA , source = lb%v )
+         call a%append(toA)
+    enddo
+  endsubroutine
+
+
+
+
+
+
+! endmodule
