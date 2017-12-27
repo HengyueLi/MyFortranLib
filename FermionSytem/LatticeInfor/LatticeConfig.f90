@@ -56,6 +56,12 @@
 !                   [fun] GetVl()
 !                         return integer::vl(3,3)
 !
+!                   [fun] GetRealPosFromPCBsis(p)
+!                         return real*8::r(3)
+!                         for a input integer::p(3) -> represent a position by using PC basis
+!                         return the position of p in real space.
+!
+!
 ! avalable is :
 !                  ![fun] IsInitiated
 ! others      :
@@ -108,6 +114,7 @@ module LatticeConfig
     procedure,pass::GetPCidFromPos
     procedure,pass::GetDecomposeR
     procedure,pass::GetVl
+    procedure,pass::GetRealPosFromPCBsis
   endtype
 
 
@@ -123,6 +130,7 @@ module LatticeConfig
   private::GetPcPos,GetPCidFromPos
   private::GetDecomposeR
   private::GetVl
+  private::GetRealPosFromPCBsis
 
 contains
 
@@ -152,6 +160,7 @@ contains
       allocate(self%pci, source = pci)
     !-------------------------------------------------------------------------------
     !  allocate Cubic
+       self%vl = vl
        call self%Cubic%Initialization( Vl )
     !-------------------------------------------------------------------------------
     !  allocate position of PCs
@@ -292,6 +301,15 @@ contains
     integer::r(3,3)
     !-----------------------------------
     r = self%vl
+  endfunction
+
+  function GetRealPosFromPCBsis(self,p) result(r)
+    implicit none
+    class(LaCon),intent(inout)::self
+    integer,intent(in)::p(3)
+    real*8::r(3)
+    !-----------------------------------
+    r = matmul(  self%Vp   , p * 1._8   )
   endfunction
 
 

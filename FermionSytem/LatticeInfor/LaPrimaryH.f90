@@ -50,6 +50,9 @@
 !                         get the i-th interacting
 !
 !                   [fun] GetState()
+!
+!                    
+!
 ! avalable is :
 !                  ![fun] i
 ! others      :

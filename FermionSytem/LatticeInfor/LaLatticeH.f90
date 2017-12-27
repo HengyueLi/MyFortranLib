@@ -6,7 +6,7 @@
 ! NAME  : LaLatticeH
 ! OBJECT: TYPE(LH)
 ! USED  : CodeObject,LaPrimaryH,LatticeConfig,FermionHamiltonian,functionalsubs
-! DATE  : 2017-12-25
+! DATE  : 2017-12-27
 ! AUTHOR: hengyueli@gmail.com
 !--------------
 ! Open-Source : No
@@ -37,7 +37,23 @@
 !                         scan all interacting and reset value of whose discription is Dis
 !
 ! avalable gets:
-!                   [fun] G
+!
+!                   [fun] GetNnearLC()
+!                         total number of connected LC.
+!
+!                   [fun] GetLocalHMatix(spini,spinj)
+!                         return complex*16::M(ns,ns)
+!                         where ns is the LC size
+!
+!                   [fun] GetNearTMatix(i,spini,spinj)
+!                         return complex*16::M(ns,ns)
+!                         the i-th connected T   (exp part is not included)
+!
+!                   [fun] GetNearTexpMatrix(q,i,spini,spinj)
+!                         GetNearTMatix multiply by exp( i r.q )
+!
+!                   [fun] GetTqMatrix(q,spini,spinj)
+!                         summation of GetNearTexpMatrix
 !
 ! avalable is :
 !                  ![fun] i
@@ -78,8 +94,9 @@ module LaLatticeH
     !--------------------------------
     ! approximated as Ni * Np
     integer                :: NLC              ! number of surrounded LCs.
-    ! save all the position of surrounded Lattice Cell. In the basis of PC's
-    integer :: LaPos(3,NSurroundedCLuster)
+    ! save all the position of surrounded Lattice Cell.
+    integer :: LaPos( 3,NSurroundedCLuster)   !In the basis of PC's
+    real*8  :: LaposR(3,NSurroundedCLuster)   !In real space
     integer                :: NHou(NSurroundedCLuster)
     type(idata),allocatable:: Hou(:,:)         ! list for saving all Hamiltonian out of Lattice.Inner use
 
@@ -90,7 +107,12 @@ module LaLatticeH
     final::Finalization
 
 
+    procedure,pass::GetNearTMatix
+    procedure,pass::GetNearTexpMatrix
+    procedure,pass::GetNnearLC
     procedure,pass::SetValueByDiscription
+    procedure,pass::GetLocalHMatix
+    procedure,pass::GetTqMatrix
   endtype
 
 
@@ -102,13 +124,20 @@ module LaLatticeH
   private::SetValueByDiscription
   private::SetMatixOneTerm
 
+  private::GetNnearLC
+  private::GetLocalHMatix
+  private::GetNearTMatix
+  private::GetNearTexpMatrix
+  private::GetTqMatrix
+
 
 contains
 
 
+
   subroutine Initialization(self,PrH,LaC,print_,show_)
     implicit none
-    class(LH),intent(out)         :: self
+    class(LH),intent(inout)       :: self
     class(PH),target,intent(in)   :: PrH
     class(LaCon),target,intent(in):: Lac
     integer,intent(in),optional   :: print_,show_
@@ -182,82 +211,66 @@ contains
     !--------------------------------
   endsubroutine
 
-  subroutine AppendOneInterFromPrimaryCellToLatticeCell(self,Inter,PCindex)
-    implicit none
-    class(LH),intent(inout)         :: self
-    type(idata),intent(in)        :: Inter
-    integer,intent(in)            :: PCindex
-    !--------------------------------------
-    type(idata)::Iin
-    integer::i,j,PCpos(3),PCdx(3),PCdp(3),LCid,LCpos(3),PCid
-    logical::IsLClocal
 
+    subroutine AppendOneInterFromPrimaryCellToLatticeCell(self,Inter,PCindex)
+      implicit none
+      class(LH),intent(inout)         :: self
+      type(idata),intent(in)        :: Inter
+      integer,intent(in)            :: PCindex
+      !--------------------------------------
+      type(idata)::Iin
+      integer::i,j,PCid,LCid,LCpos(3)
+      integer::Rj(3),xj(3),bj(3)    !  R = A . x + b
 
-    Iin         = Inter
-    !Get fist index, the first index is always in the cluster.
-    Iin%para(1) = self%LaC%GetSiteIdFromPC(PCindex,  inter%para(1)  )
-    !Get second index
-    PCpos = Inter%P + self%LaC%GetPcPos(PCindex)
-    PCid = self%LaC%GetPCidFromPos( PCpos )
-    if (PCid.eq.-1)then
-      IsLClocal = .False.
-    else
-      Iin%para(2) = self%LaC%GetSiteIdFromPC(PCid,  inter%para(2)  )
-      if ( (Iin%para(2) .le. self%LaC%GetNs())  .and.  (Iin%para(2).ge.0)  )then
-        IsLClocal = .true.
+      Iin         = Inter
+
+      !-----------------------------------------------------------------------
+      ! Get fist index, the first index is always in the cluster.
+      Iin%para(1) = self%LaC%GetSiteIdFromPC(PCindex,  inter%para(1)  )
+      if (  (Iin%para(1) .lt.1)  .or.  (Iin%para(1) .gt.self%ns)      ) then
+        write(self%getprint(),*)"ERROR: 20171227";stop
+      endif
+      !-----------------------------------------------------------------------
+      !Get PC position of J cluster
+      Rj = self%LaC%GetPcPos(PCindex) + Inter%P
+      !-----------------------------------------------------------------------
+      !decompose j
+      call self%LaC%GetDecomposeR(Rj,xj,bj)
+      if (sum(abs(xj))==0)then
+        !-----------------------------local term ---------------
+        self%NHin = self%NHin + 1
+        if ( self%NHin.gt.size(self%Hin) )then
+          write(self%getprint(),*)"self%NHi is too small in LH";stop
+        endif
+        self%Hin( self%NHin ) = Iin
       else
-        IsLClocal = .false.
+        !-----------------------------None local term-----------
+           LCpos = matmul( self%LaC%GetVl()  , xj  )                  ! ;write(*,*)666,LCpos,666
+           LCid = GetSurroundLC_IdFromPos(self,LCpos)
+           if (LCid.eq.-1)then
+             self%NLC = self%NLC + 1
+             LCid = self%NLC
+               !------------
+               if (LCid .gt.NSurroundedCLuster )then
+                  write(self%getprint(),*)"ERROR: NSurroundedCLuster is too small";stop
+               endif
+            self%LaPos(:,LCid ) =  LCpos
+            self%LaPosR(:,LCid) = self%LaC%GetRealPosFromPCBsis(LCpos)
+           endif
+           !------------
+           PCid = self%LaC%GetPCidFromPos(bj)
+           Iin%para(2) = self%LaC%GetSiteIdFromPC(PCid,  inter%para(2)  )!;write(*,*)Iin%para(1),Iin%para(2)
+           !-------------append inter
+           self%NHou(LCid) = self%NHou(LCid) + 1                        ! ;write(*,*)LCid,self%NHou(LCid)
+           if (self%NHou(LCid).gt.  size(self%Hou(:,LCid))  )then
+             write(self%getprint(),*)"Size of Hou(1-th,*) is too small";stop
+           endif
+           self%Hou( self%NHou(LCid)  ,LCid) = Iin
       endif
-    endif
-
-                         !
-                         !
-                        !  write(*,*)PCID
-                        !  write(*,*)Iin%Disc
-                        !  write(*,*)iin%Itype
-                        !  write(*,*)"PC=",Inter%Para(1:2)
-                        !  write(*,*)"LC=",Iin%para(1:2)
-                        !  write(*,*)"----------------------"
+    endsubroutine
 
 
 
-    if ( IsLClocal ) then
-      !---local term
-      self%NHin = self%NHin + 1
-      if ( self%NHin.gt.size(self%Hin) )then
-        write(self%getprint(),*)"self%NHi is too small in LH";stop
-      endif
-      self%Hin( self%NHin ) = Iin
-    else
-      !---Non Local---------------------------------
-      !  get the postition of connected PC
-         PCpos = self%lac%GetPcPos(PCindex) + Iin%p
-      !  decompoase Position
-         call self%LaC%GetDecomposeR(PCpos,PCdx,PCdp)
-      !------------
-         LCpos = matmul( self%LaC%GetVl()  , PCdx  )
-         LCid = GetSurroundLC_IdFromPos(self,LCpos)
-         if (LCid.eq.-1)then
-           self%NLC = self%NLC + 1
-           LCid = self%NLC
-             !------------
-             if (LCid .gt.NSurroundedCLuster )then
-                write(self%getprint(),*)"ERROR: NSurroundedCLuster is too small";stop
-             endif
-          self%LaPos(:,LCid) =  LCpos
-         endif
-
-         !------------
-         PCid = self%LaC%GetPCidFromPos(PCdp)
-         Iin%para(2) = self%LaC%GetSiteIdFromPC(PCid,  inter%para(2)  )
-         !-------------append inter
-         self%NHou(LCid) = self%NHou(LCid) + 1
-         if (self%NHou(LCid).gt.  size(self%Hou(:,LCid))  )then
-           write(self%getprint(),*)"Size of Hou(1-th,*) is too small";stop
-         endif
-         self%Hou( self%NHou(LCid)  ,LCid) = Iin
-    endif
-  endsubroutine
 
   subroutine ExtendNegativePartH(self)
     implicit none
@@ -279,9 +292,9 @@ contains
        self%NHou(iNew)    =   self%NHou(jc)
        do jc2 = 1 , self%NHou(jc)
           self%Hou(jc2,iNew) = self%Hou(jc2,jc)
-          self%Hou(jc2,iNew)%para(1) = self%Hou(jc2,iNew)%para(2)
-          self%Hou(jc2,iNew)%para(2) = self%Hou(jc2,iNew)%para(1)
-          self%Hou(jc2,iNew)%v = conjg(self%Hou(jc2,iNew)%v)
+          self%Hou(jc2,iNew)%para(1) = self%Hou(jc2,jc)%para(2)
+          self%Hou(jc2,iNew)%para(2) = self%Hou(jc2,jc)%para(1)
+          self%Hou(jc2,iNew)%v = conjg(self%Hou(jc2,jc)%v)
        enddo
     enddo
 
@@ -293,7 +306,7 @@ contains
   integer function GetSurroundLC_IdFromPos(self,Pos)
     implicit none
     class(LH),intent(inout) :: self
-    integer,intent(in)    :: Pos(3)
+    integer,intent(in)      :: Pos(3)
     !-------------------------------------
     integer::jc
     GetSurroundLC_IdFromPos = -1
@@ -353,15 +366,21 @@ contains
   endsubroutine
 
 
-  !  add a two particle term into matrix
+  !  add one signle particle term into matrix
   !  NOTICE: Matrix = Matrix + data
-  subroutine SetMatixOneTerm(self,Matrix,spini,spinj,data)
+  !  recognized nteracting:
+  !     [
+  !     "SpinOnSite"  ,  "OnSite"  ,  "SpinHopping"  ,  "Hopping"
+  !     ]
+  !  logcal::IsLocal  ->  put on the conjugate term.
+  subroutine SetMatixOneTerm(self,Matrix,spini,spinj,data,IsLocal)
     use functionalsubs
     implicit none
     class(LH),intent(inout) :: self
     complex*16,intent(inout):: Matrix(self%Ns,self%Ns)
     integer,intent(in)      :: spini,spinj
     type(idata),intent(in)  :: data
+    logical,intent(in)      :: IsLocal
     !-----------------------------------
     TYPE(funcsubs)::f
 
@@ -370,10 +389,24 @@ contains
       if ( (spini==spinj) .and.  (spini==data%Para(3)) ) then
          Matrix(data%Para(1),data%Para(1)) = Matrix(data%Para(1),data%Para(1)) + data%v
       endif
-    case()
-
-    case
-
+    case("ONSITE")                   !     "OnSite"
+      if ( (spini==spinj)                              ) then
+         Matrix(data%Para(1),data%Para(1)) = Matrix(data%Para(1),data%Para(1)) + data%v
+      endif
+    case("SPINHOPPING")             !   "SpinHopping"
+      if ( (spini==spinj).and.  (spini==data%Para(3))  ) then
+        Matrix(data%Para(1),data%Para(2)) = Matrix(data%Para(1),data%Para(2)) + data%v
+        if ( IsLocal ) then!------local term
+          Matrix(data%Para(2),data%Para(1)) = Matrix(data%Para(2),data%Para(1)) + conjg(data%v)
+        endif
+      endif
+    case("HOPPING")                !      "Hopping"
+      if ( (spini==spinj)                             ) then
+        Matrix(data%Para(1),data%Para(2)) = Matrix(data%Para(1),data%Para(2)) + data%v
+        if ( IsLocal )then !------local term
+          Matrix(data%Para(2),data%Para(1)) = Matrix(data%Para(2),data%Para(1)) + conjg(data%v)
+        endif
+      endif
     end select
 
   endsubroutine
@@ -381,18 +414,102 @@ contains
 
 
 
+  function GetLocalHMatix(self,spini,spinj) result(r)
+    implicit none
+    class(LH),intent(inout) :: self
+    integer,intent(in)::spini,spinj
+    complex*16::r(self%ns,self%ns)
+    !-----------------------------------
+    integer::jc
+    call self%CheckInitiatedOrStop()
+    r = (0._8,0._8)
+    do jc = 1 , self%NHin
+       call SetMatixOneTerm(self,r,spini,spinj,self%Hin(jc),.True.)
+    enddo
+  endfunction
+
+
+
+  ! Get near connected T (exp part is not included.)
+  function GetNearTMatix(self,i,spini,spinj) result(r)
+    implicit none
+    class(LH),intent(inout) :: self
+    integer,intent(in)::i,spini,spinj
+    complex*16::r(self%ns,self%ns)
+    !------------------------------------
+    integer::jc
+    call self%CheckInitiatedOrStop()
+    r = (0._8,0._8)
+    if ( (i.gt.0) .and. (i.le.self%NLC)   )then
+       Do jc = 1 , self%NHou(i)
+          call SetMatixOneTerm(self,r,spini,spinj,self%Hou(jc,i),.false.)
+       enddo
+    else
+      write(self%getprint(),*)"ERROR: input i =",i,"is an illegal value";stop
+    endif
+  endfunction
+
+
+
+    integer function GetNnearLC(self)
+      implicit none
+      class(LH),intent(inout)  :: self
+      !-------------------------------------
+      call self%CheckInitiatedOrStop()
+      GetNnearLC = self%NLC
+    endfunction
+
+
+    function GetNearTexpMatrix(self,q,i,spini,spinj) result(r)
+      implicit none
+      class(LH),intent(inout)  :: self
+      real*8,intent(in)::q(3)
+      integer,intent(in)::i,spini,spinj
+      complex*16::r(self%ns,self%ns)
+      !-------------------------------------
+      call self%CheckInitiatedOrStop()
+
+      r = GetNearTMatix(self,i,spini,spinj) * Zexp( sum(self%LaPosR(:,i) * q) * (0._8,1._8)   )
+    endfunction
+
+    function GetTqMatrix(self,q,spini,spinj) result(r)
+      implicit none
+      class(LH),intent(inout)  :: self
+      real*8,intent(in)::q(3)
+      integer,intent(in)::spini,spinj
+      complex*16::r(self%ns,self%ns)
+      !-------------------------------------
+      integer::jc
+      r = (0._8,0._8)
+      do jc = 1 , self%NLC
+         r = r + GetNearTexpMatrix(self,q,jc,spini,spinj)
+      enddo
+    endfunction
+
+
+
   subroutine test(self)
     implicit none
     class(LH),intent(inout) :: self
     !-----------------------------------
-    integer::jc
-    do jc = 1 , self%NHin
-      write(*,*) self%hin(jc)%Disc
-      write(*,*) self%hin(jc)%para(1:3)
-      write(*,*) self%hin(jc)%Itype
-      write(*,*) self%hin(jc)%v
-      write(*,*)"------------------"
-    enddo
+    integer::jc,jc1,jc2,id
+    real*8::q(3)
+    complex*16::H(self%ns,self%ns)
+
+    q(1) = 0.6; q(2) = 0.9 ; q(3) = 0._8   ;q=0._8
+
+    H = self%GetTqMatrix(q,spini=0,spinj=0)
+    write(*,*) H - transpose(conjg(H))
+
+
+
+    ! H = self%GetNearTMatix(4,0,0)
+    ! do jc1 =1 , 4 ; do jc2 = 1 , 4
+    !   if (abs(H(jc1,jc2)).gt.0.0001 ) write(*,*)jc1,jc2,H(jc1,jc2)
+    ! enddo ;enddo
+    !
+
+
   endsubroutine
 
 
