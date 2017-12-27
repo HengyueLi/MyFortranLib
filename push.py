@@ -1,12 +1,31 @@
 #!/usr/bin/env python3
 
+
+
+
+#------------------------------------------------------
+#       get password
+#------------------------------------------------------
+import sys,os
+from pathlib import Path
+home = str(Path.home())
+AutoPassDirc = home + '/Documents/AutoPassword'
+sys.path.insert(0,AutoPassDirc)
+import password as pw
+
+
+username = pw.GetAutoPasswd('git','username').get()
+password = pw.GetAutoPasswd('git','password').get()
+#------------------------------------------------------
+
+project = "github.com/HengyueLi/MyFortranLib"
+
+
 import datetime,os
-
-
-
 time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 gitadd = "git add .;"
 gitcom = "git commit -m "+"\""+time+"\";"
-gitpus = "git push -u origin master --force;"
+gitpus = "git push https://"+username+":"+password+"@"+project+" --force;"
+
 
 os.system(  gitadd + gitcom + gitpus )
