@@ -37,15 +37,24 @@
 !                         real*8,intent(in)::B,Qm(3)
 !                         character(DiscLen),intent(in)::discription   DiscLen=32?
 !
-!                         Delta =   sum_{r,spin} (-1)^spin Exp(i Qm * r )
+!                         Delta =   B * sum_{r,spin} (-1)^spin Exp(i Qm * r )
 !
 !                   [sub] AppendOrbitalCDW(E,Qm,oi,oj,discription)
 !                         real*8,intent(in)::E,Qm(3)
 !                         integer,intent(in)::Oi,Oj
 !                         character(DiscLen),intent(in)::discription   DiscLen=32?
 !
-!                         Delta = sum_{r} Exp(i Qm * r ) * (n_oi - n _oj)
+!                         Delta = E * sum_{r} Exp(i Qm * r ) * (n_oi - n _oj)
 !                             notice the order of oi,oj
+!
+!                   [sub] AppendOrbitalESDW(E,Qm,oi,oj,discription)
+!                         real*8,intent(in)::E,Qm(3)
+!                         integer,intent(in)::Oi,Oj
+!                         character(DiscLen),intent(in)::discription   DiscLen=32?
+!
+!                         Delta = E * sum_r Exp(i Qm * r ) * (-1)^spin * (  c^+_{r,oi} c_{r,oj} +h.c.  )
+!
+!
 !
 !
 !
@@ -87,11 +96,13 @@ module VCA_DeltaH
    procedure,pass::StartAppending
    procedure,pass::EndAppending
    procedure,pass::Append
+   procedure,pass::AppendDeltaAF
    procedure,pass::AppendOrbitalCDW
+   procedure,pass::AppendOrbitalESDW
   endtype
 
   private::Initialization,StartAppending,EndAppending,Append
-  private::AppendDeltaAF,AppendOrbitalCDW
+  private::AppendDeltaAF,AppendOrbitalCDW,AppendOrbitalESDW
 
 contains
 
@@ -191,6 +202,41 @@ contains
          I%v = - E * expiqr
          CALL SELF%Append(I)
        endif
+    enddo
+  endsubroutine
+
+
+  subroutine AppendOrbitalESDW(self,E,Qm,oi,oj,discription)
+    implicit none
+    class(VCAdH),intent(inout)::self
+    real*8,intent(in)::E,Qm(3)
+    integer,intent(in)::Oi,Oj
+    character(DiscLen),intent(in)::discription
+    !---------------------------------------
+    integer::jci,jcj,o1,o2,pi(3),pj(3),spin
+    type(idata)::I
+    complex*16::expiqr
+    do jci = 1 , self%Lconf%GetNs()
+       do jcj = jci + 1 , self%Lconf%GetNs()
+          pi = self%Lconf%GetSiteP(jci)
+          pj = self%Lconf%GetSiteP(jcj)
+          o1 = self%Lconf%GetOrbitIndex(jci)
+          o2 = self%Lconf%GetOrbitIndex(jcj)
+          if ( sum( abs(pi-pj) )==0 )then
+             if (  ( (o1==oi) .and. (o2==oj)  ) .or. ( (o2==oi) .and. (o1==oj)  ) )then
+               !-----------------------------
+               !  site jci,jcj
+               expiqr = Zexp( sum( self%Lconf%GetSiteRealP(jci) * Qm ) * (0._8,1._8) )
+               I%Disc=discription
+               I%Itype="SpinHopping"
+               I%Para(1) = jci   ;  i%Para(2) = jcj
+               do spin = 0 , 1
+                  I%v = (-1)**spin * expiqr *  E
+                  CALL SELF%Append(I)
+               enddo
+             endif
+          endif
+       enddo
     enddo
   endsubroutine
 
