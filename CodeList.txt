@@ -4,6 +4,7 @@ lib/OOP_interface/CodeObject.f90
 lib/FermionSytem/SolverTools/FermionOperators.f90
 lib/MathFunc/m_intergration.f90
 lib/PhyFunc/PhyFunc.f90
+lib/FermionSytem/EDandLA/CEsolver.f90
 lib/MatrixOperation/class_numerical_method.f90
 lib/FortranFunc/ReadFile.f90
 lib/MathFunc/basic_math_functions.f90
@@ -26,7 +27,7 @@ lib/FermionSytem/LA/LA_GCESpace.f90
 lib/FermionSytem/ED/ED_FullSpace.f90
 lib/FermionSytem/ED/ED_phyCal.f90
 lib/FermionSytem/LA/LA_CE_G_Unsave.f90
-lib/FermionSytem/LA/LA_CE_G.f90
 lib/FermionSytem/ED/ED_GCE_G.f90
+lib/FermionSytem/LA/LA_CE_G.f90
 lib/FermionSytem/LA/LA_GCE_G_Unsave.f90
 lib/FermionSytem/LA/LA_GCE_G.f90

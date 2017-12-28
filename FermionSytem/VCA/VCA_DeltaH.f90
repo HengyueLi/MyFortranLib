@@ -4,7 +4,7 @@
 ! TYPE  : MODULE
 ! NAME  : VCA_DeltaH
 ! OBJECT: TYPE(VCAdH)
-! USED  : CodeObject,LatticeConfig,LaPrimaryH
+! USED  : CodeObject,LatticeConfig,LaPrimaryH,functionalsubs
 ! DATE  : 2017-12-28
 ! AUTHOR: hengyueli@gmail.com
 !--------------
@@ -55,7 +55,9 @@
 !
 !                         Delta = E * sum_r Exp(i Qm * r ) * (-1)^spin * (  c^+_{r,oi} c_{r,oj} +h.c.  )
 !
-!
+!                   [sub] SetValueByDiscription(discription,v)
+!                         character(DiscLen),intent(in)::discription   DiscLen=32?
+!                         complex*16,intent(in)::v
 !
 ! avalable gets:
 !                   [fun] GetDelatMatrix(spini,spinj)
@@ -101,11 +103,13 @@ module VCA_DeltaH
    procedure,pass::AppendOrbitalCDW
    procedure,pass::AppendOrbitalESDW
    procedure,pass::GetDelatMatrix
+   procedure,pass::SetValueByDiscription
   endtype
 
   private::Initialization,StartAppending,EndAppending,Append
   private::AppendDeltaAF,AppendOrbitalCDW,AppendOrbitalESDW
   private::GetDelatMatrix
+  private::SetValueByDiscription
 
 contains
 
@@ -262,6 +266,30 @@ contains
       write(self%getprint(),*)"ERROR: EndAppend should be called before GetDelatMatrix";stop
     endif
   endfunction
+
+  subroutine SetValueByDiscription(self,discription,v)
+    use functionalsubs
+    implicit none
+    class(VCAdH),intent(inout)::self
+    character(DiscLen),intent(in)::discription
+    complex*16,intent(in)::v
+    !---------------------------------------
+    integer::jc
+    character(DiscLen)::DisIn,DisCheck
+    TYPE(funcsubs)::f
+
+    call self%CheckInitiatedOrStop()
+
+
+    DisIn = adjustl(trim(f%get_string_upper(discription)))
+    do jc = 1 , self%Nli
+      DisCheck = self%LocalInter(jc)%Disc
+      DisCheck = adjustl(trim(f%get_string_upper(DisCheck)))
+      if (DisIn.eq.DisCheck)then
+         self%LocalInter(jc)%v = v
+      endif
+    enddo
+  endsubroutine
 
 
 
