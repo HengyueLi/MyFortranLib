@@ -122,7 +122,7 @@ module LaLatticeH
   private::AppendOneInterFromPrimaryCellToLatticeCell
   private::GetSurroundLC_IdFromPos,ExtendNegativePartH
   private::SetValueByDiscription
-  private::SetMatixOneTerm
+  ! private::SetMatixOneTerm
 
   private::GetNnearLC
   private::GetLocalHMatix
@@ -365,51 +365,52 @@ contains
 
   endsubroutine
 
-
-  !  add one signle particle term into matrix
-  !  NOTICE: Matrix = Matrix + data
-  !  recognized nteracting:
-  !     [
-  !     "SpinOnSite"  ,  "OnSite"  ,  "SpinHopping"  ,  "Hopping"
-  !     ]
-  !  logcal::IsLocal  ->  put on the conjugate term.
-  subroutine SetMatixOneTerm(self,Matrix,spini,spinj,data,IsLocal)
-    use functionalsubs
-    implicit none
-    class(LH),intent(inout) :: self
-    complex*16,intent(inout):: Matrix(self%Ns,self%Ns)
-    integer,intent(in)      :: spini,spinj
-    type(idata),intent(in)  :: data
-    logical,intent(in)      :: IsLocal
-    !-----------------------------------
-    TYPE(funcsubs)::f
-
-    select case(adjustl(trim(f%get_string_upper(data%Itype))))
-    case("SPINONSITE")               !     "SpinOnSite"
-      if ( (spini==spinj) .and.  (spini==data%Para(3)) ) then
-         Matrix(data%Para(1),data%Para(1)) = Matrix(data%Para(1),data%Para(1)) + data%v
-      endif
-    case("ONSITE")                   !     "OnSite"
-      if ( (spini==spinj)                              ) then
-         Matrix(data%Para(1),data%Para(1)) = Matrix(data%Para(1),data%Para(1)) + data%v
-      endif
-    case("SPINHOPPING")             !   "SpinHopping"
-      if ( (spini==spinj).and.  (spini==data%Para(3))  ) then
-        Matrix(data%Para(1),data%Para(2)) = Matrix(data%Para(1),data%Para(2)) + data%v
-        if ( IsLocal ) then!------local term
-          Matrix(data%Para(2),data%Para(1)) = Matrix(data%Para(2),data%Para(1)) + conjg(data%v)
-        endif
-      endif
-    case("HOPPING")                !      "Hopping"
-      if ( (spini==spinj)                             ) then
-        Matrix(data%Para(1),data%Para(2)) = Matrix(data%Para(1),data%Para(2)) + data%v
-        if ( IsLocal )then !------local term
-          Matrix(data%Para(2),data%Para(1)) = Matrix(data%Para(2),data%Para(1)) + conjg(data%v)
-        endif
-      endif
-    end select
-
-  endsubroutine
+  !
+  ! !  add one signle particle term into matrix
+  ! !  NOTICE: Matrix = Matrix + data
+  ! !  recognized nteracting:
+  ! !     [
+  ! !     "SpinOnSite"  ,  "OnSite"  ,  "SpinHopping"  ,  "Hopping"
+  ! !     ]
+  ! !  logcal::IsLocal  ->  put on the conjugate term.
+  ! subroutine SetMatixOneTerm(ns,Matrix,spini,spinj,data,IsLocal)
+  !   use functionalsubs
+  !   implicit none
+  !   ! class(LH),intent(inout) :: self
+  !   integer,intent(in)      :: Ns
+  !   complex*16,intent(inout):: Matrix(Ns,Ns)
+  !   integer,intent(in)      :: spini,spinj
+  !   type(idata),intent(in)  :: data
+  !   logical,intent(in)      :: IsLocal
+  !   !-----------------------------------
+  !   TYPE(funcsubs)::f
+  !
+  !   select case(adjustl(trim(f%get_string_upper(data%Itype))))
+  !   case("SPINONSITE")               !     "SpinOnSite"
+  !     if ( (spini==spinj) .and.  (spini==data%Para(3)) ) then
+  !        Matrix(data%Para(1),data%Para(1)) = Matrix(data%Para(1),data%Para(1)) + data%v
+  !     endif
+  !   case("ONSITE")                   !     "OnSite"
+  !     if ( (spini==spinj)                              ) then
+  !        Matrix(data%Para(1),data%Para(1)) = Matrix(data%Para(1),data%Para(1)) + data%v
+  !     endif
+  !   case("SPINHOPPING")             !   "SpinHopping"
+  !     if ( (spini==spinj).and.  (spini==data%Para(3))  ) then
+  !       Matrix(data%Para(1),data%Para(2)) = Matrix(data%Para(1),data%Para(2)) + data%v
+  !       if ( IsLocal ) then!------local term
+  !         Matrix(data%Para(2),data%Para(1)) = Matrix(data%Para(2),data%Para(1)) + conjg(data%v)
+  !       endif
+  !     endif
+  !   case("HOPPING")                !      "Hopping"
+  !     if ( (spini==spinj)                             ) then
+  !       Matrix(data%Para(1),data%Para(2)) = Matrix(data%Para(1),data%Para(2)) + data%v
+  !       if ( IsLocal )then !------local term
+  !         Matrix(data%Para(2),data%Para(1)) = Matrix(data%Para(2),data%Para(1)) + conjg(data%v)
+  !       endif
+  !     endif
+  !   end select
+  !
+  ! endsubroutine
 
 
 
@@ -424,7 +425,8 @@ contains
     call self%CheckInitiatedOrStop()
     r = (0._8,0._8)
     do jc = 1 , self%NHin
-       call SetMatixOneTerm(self,r,spini,spinj,self%Hin(jc),.True.)
+      ! call SetMatixOneTerm(self%ns,r,spini,spinj,self%Hin(jc),.True.)
+       call self%Hin(jc)%SetIntoMatix(self%ns,r,spini,spinj,.True.)
     enddo
   endfunction
 
@@ -442,7 +444,8 @@ contains
     r = (0._8,0._8)
     if ( (i.gt.0) .and. (i.le.self%NLC)   )then
        Do jc = 1 , self%NHou(i)
-          call SetMatixOneTerm(self,r,spini,spinj,self%Hou(jc,i),.false.)
+          ! call SetMatixOneTerm(self%ns,r,spini,spinj,self%Hou(jc,i),.false.)
+          call self%Hou(jc,i)%SetIntoMatix(self%ns,r,spini,spinj,.false.)
        enddo
     else
       write(self%getprint(),*)"ERROR: input i =",i,"is an illegal value";stop
@@ -503,11 +506,11 @@ contains
 
 
 
-    ! H = self%GetNearTMatix(4,0,0)
+    ! H = self%GetNearTMatix(1,0,0)
     ! do jc1 =1 , 4 ; do jc2 = 1 , 4
     !   if (abs(H(jc1,jc2)).gt.0.0001 ) write(*,*)jc1,jc2,H(jc1,jc2)
     ! enddo ;enddo
-    !
+
 
 
   endsubroutine

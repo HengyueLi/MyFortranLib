@@ -35,6 +35,13 @@
 !                   [fun] GetSiteP(i)
 !                         return integer::r(3)  is the position of the site
 !
+!                   [fun] GetSiteRealP(i)
+!                         return real*8::r(3)  is the position of site in real space.
+!
+!                   [fun] GetOrbitIndex(i):
+!                         integer::
+!                         return the orbital index of site i
+!
 !                   [fun] GetPcPos(i)
 !                         return integer::r(3) is the position of i-th PC.
 !
@@ -115,6 +122,8 @@ module LatticeConfig
     procedure,pass::GetDecomposeR
     procedure,pass::GetVl
     procedure,pass::GetRealPosFromPCBsis
+    procedure,pass::GetSiteRealP
+    procedure,pass::GetOrbitIndex
   endtype
 
 
@@ -131,6 +140,8 @@ module LatticeConfig
   private::GetDecomposeR
   private::GetVl
   private::GetRealPosFromPCBsis
+  private::GetSiteRealP
+  private::GetOrbitIndex
 
 contains
 
@@ -310,6 +321,25 @@ contains
     real*8::r(3)
     !-----------------------------------
     r = matmul(  self%Vp   , p * 1._8   )
+  endfunction
+
+
+  function GetSiteRealP(self,i) result(r)
+    implicit none
+    class(LaCon),intent(inout)::self
+    integer,intent(in)::i
+    real*8::r(3)
+    !-----------------------------------
+    r = self%lc(:,i)
+  endfunction
+
+
+  integer function GetOrbitIndex(self,i)
+    implicit none
+    class(LaCon),intent(inout)::self
+    integer,intent(in)::i
+    !-----------------------------------
+    GetOrbitIndex = self%lci(i) 
   endfunction
 
 
