@@ -22,7 +22,8 @@
 !
 !
 ! avalable sets:
-!                   [sub] I
+!                   [sub] Initialization(Lconf)
+!                         class(LaCon),target::Lconf
 !
 !                   [sub] StartAppending()
 !
@@ -56,10 +57,9 @@
 !
 !
 !
-!
-!
 ! avalable gets:
-!                   [fun] G
+!                   [fun] GetDelatMatrix(spini,spinj)
+!                         complex*16::GetDelatMatrix(ns,ns)
 !
 ! avalable is :
 !                  ![fun] i
@@ -83,6 +83,7 @@ module VCA_DeltaH
 
   type,extends(Object)::VCAdH
     private
+    integer::ns
     integer::state
     class(LaCon),pointer :: Lconf => null()    ! lattice configruatioin
 
@@ -99,10 +100,12 @@ module VCA_DeltaH
    procedure,pass::AppendDeltaAF
    procedure,pass::AppendOrbitalCDW
    procedure,pass::AppendOrbitalESDW
+   procedure,pass::GetDelatMatrix
   endtype
 
   private::Initialization,StartAppending,EndAppending,Append
   private::AppendDeltaAF,AppendOrbitalCDW,AppendOrbitalESDW
+  private::GetDelatMatrix
 
 contains
 
@@ -115,7 +118,7 @@ contains
     call self%SetInitiated(.True.)
     self%Lconf => Lconf
     self%state = 1
-
+    self%ns    = self%Lconf%GetNs()
   endsubroutine
 
 
@@ -231,6 +234,7 @@ contains
                I%Itype="SpinHopping"
                I%Para(1) = jci   ;  i%Para(2) = jcj
                do spin = 0 , 1
+                  I%para(3) = spin
                   I%v = (-1)**spin * expiqr *  E
                   CALL SELF%Append(I)
                enddo
@@ -239,6 +243,25 @@ contains
        enddo
     enddo
   endsubroutine
+
+
+  function GetDelatMatrix(self,spini,spinj) result(r)
+    implicit none
+    class(VCAdH),intent(inout)::self
+    integer,intent(in)::spini,spinj
+    complex*16::r(self%ns,self%ns)
+    !---------------------------------------
+    integer::jc
+    call self%CheckInitiatedorStop()
+    if (self%state==3)then
+      r = (0._8,0._8)
+      do jc = 1 , self%Nli
+         call self%LocalInter(jc)%SetIntoMatix(self%ns,r,spini,spinj,.true.)   !;write(*,*)r;pause
+      enddo
+    else
+      write(self%getprint(),*)"ERROR: EndAppend should be called before GetDelatMatrix";stop
+    endif
+  endfunction
 
 
 

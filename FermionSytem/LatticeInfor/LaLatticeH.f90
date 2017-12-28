@@ -490,31 +490,31 @@ contains
     endfunction
 
 
-
-  subroutine test(self)
-    implicit none
-    class(LH),intent(inout) :: self
-    !-----------------------------------
-    integer::jc,jc1,jc2,id
-    real*8::q(3)
-    complex*16::H(self%ns,self%ns)
-
-    q(1) = 0.6; q(2) = 0.9 ; q(3) = 0._8   ;q=0._8
-
-    H = self%GetTqMatrix(q,spini=0,spinj=0)
-    write(*,*) H - transpose(conjg(H))
-
-
-
-    ! H = self%GetNearTMatix(1,0,0)
-    ! do jc1 =1 , 4 ; do jc2 = 1 , 4
-    !   if (abs(H(jc1,jc2)).gt.0.0001 ) write(*,*)jc1,jc2,H(jc1,jc2)
-    ! enddo ;enddo
-
-
-
-  endsubroutine
-
+  ! 
+  ! subroutine test(self)
+  !   implicit none
+  !   class(LH),intent(inout) :: self
+  !   !-----------------------------------
+  !   integer::jc,jc1,jc2,id
+  !   real*8::q(3)
+  !   complex*16::H(self%ns,self%ns)
+  !
+  !   q(1) = 0.6; q(2) = 0.9 ; q(3) = 0._8   ;q=0._8
+  !
+  !   H = self%GetTqMatrix(q,spini=0,spinj=0)
+  !   write(*,*) H - transpose(conjg(H))
+  !
+  !
+  !
+  !   ! H = self%GetNearTMatix(1,0,0)
+  !   ! do jc1 =1 , 4 ; do jc2 = 1 , 4
+  !   !   if (abs(H(jc1,jc2)).gt.0.0001 ) write(*,*)jc1,jc2,H(jc1,jc2)
+  !   ! enddo ;enddo
+  !
+  !
+  !
+  ! endsubroutine
+  !
 
 
 

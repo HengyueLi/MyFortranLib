@@ -107,7 +107,7 @@ contains
     integer,intent(in)      :: spini,spinj
     logical,intent(in)      :: IsLocal
     !-----------------------------------
-    TYPE(funcsubs)::f
+    TYPE(funcsubs)::f                         
 
     select case(adjustl(trim(f%get_string_upper(data%Itype))))
     case("SPINONSITE")               !     "SpinOnSite"
