@@ -87,9 +87,9 @@ contains
 
   subroutine Initialization(self,La,i,spini,j,spinj ,M_,OTH_,BZERO_,PRINT_,SHOW_)
     implicit none
-    class(LAGCEGUSV),intent(inout)::self
-    class(LA_GCE),intent(in),target::La
-    integer,intent(in)::i,spini,j,spinj
+    class(LAGCEGUSV),intent(inout)      :: self
+    class(LA_GCE),intent(in),target     :: La
+    integer,intent(in)                  :: i,spini,j,spinj
     integer,intent(in),optional         :: M_
     logical,intent(in),optional         :: OTH_
     real*8,intent(in),optional          :: bzero_
@@ -111,7 +111,7 @@ contains
     self%Nsub  = self%FullLa%GetNsub()
     allocate(  self%subG(self%nsub)  )
 
-    do jc = 1, self%Nsub             
+    do jc = 1, self%Nsub
        LaSub => self%FullLa%GetSubSpacePointer(jc)
        call self%subG(jc)%Initialization(La=Lasub,i=i,spini=spini,j=j,spinj=spinj,&
            M_=self%m,OTH_=self%oth,BZERO_=self%bzero,PRINT_=self%print,SHOW_=self%show)

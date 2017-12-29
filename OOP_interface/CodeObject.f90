@@ -93,7 +93,7 @@ contains
 
   logical function IsInitiated(self)
     implicit none
-    class(Object),intent(inout)::self
+    class(Object),intent(in)::self
     !----------------------------------
     IsInitiated = self%initiated
   endfunction
@@ -127,14 +127,14 @@ contains
 
   integer function GetPrint(self)
     implicit none
-    class(Object),intent(inout)::self
+    class(Object),intent(in)::self
     !----------------------------------
     GetPrint = self%print
   endfunction
 
   integer function GetShow(self)
     implicit none
-    class(Object),intent(inout)::self
+    class(Object),intent(in)::self
     !----------------------------------
     GetShow = self%show
   endfunction
@@ -145,7 +145,7 @@ contains
 
   subroutine CheckInitiatedOrStop(self)
     implicit none
-    class(Object),intent(inout)::self
+    class(Object),intent(in)::self
     !----------------------------------
     if (.not.self%initiated)then
        write(self%print,*)"ERROR: object is used before Initialization. Program exit."

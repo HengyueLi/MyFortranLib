@@ -22,7 +22,7 @@
 !
 !
 ! avalable sets:
-!                  [sub] Initialization(Ta,IsReal,H,subid,PRINT_,show_,PreE_,PreDe_,bzero_,M_,oth_)
+!                  [sub] Initialization(Ta,IsReal,H,subid,PRINT_,SHOW_,PreE_,PreDe_,bzero_,M_,oth_)
 !                        type(table)::Ta  (will be pointed and be read only)
 !                        logical    ::IsReal ! if H is a real problem.
 !                        type(Ham)  ::H , will be  pointed.
@@ -39,28 +39,41 @@
 ! avalable gets:
 !                   [sub] SynchronizeWithHamiltonian()
 !                         Check if H is diagonalized, and if not, diagonalize it.
+!
 !                  [fun] GetD()
 !                        get the dimension of the subspace
+!
 !                  [fun] GetEg()
 !                         get ground state energy.
+!
 !                  [fun] GetE(i)
 !                         Get E_i
+!
 !                  [fun] GetDe()
 !                         degeneracy
+!
 !                  [fun] GetSubId()
 !                        integer::
+!
 !                  [fun] GetNs()
 !                        integer::
+!
 !                  [fun] GetOptActState(opt,i,d)
 !                        complex*16::GetOptActState(d)
 !                        opt | i> = | GetOptActState(d) >
 !                        the dimension, d, of output state should be known first
 !                        act on the i-th GS in the subspace
+!
 !                  [fun] GetGsProduct(i,S)
 !                        return <GS(i)|S>    complex*16
 !                        size(S) should be the same as GS
+!
 !                  [fun] GetOperActOnState(opert,subidin,din,dout,Si)
 !                        |out(dout)> = opert |Si(subidin,din)>
+!
+!                  [fun] GetOperateProduct(A)
+!                        TYPE(FermOper)::A
+!                        return complex*16::<A> = 1/D * sum_{all GS} <GS|A|GS>
 !
 !
 ! avalable is :
@@ -147,6 +160,7 @@ module LA_Subspace
       ! procedure,nopass::oper_Act_On_State
       procedure,pass::GetOperActOnState
       procedure,pass::GetD
+      procedure,pass::GetOperateProduct
     endtype
 
 
@@ -174,6 +188,7 @@ module LA_Subspace
     private::GetNs
     private::GetOperActOnState
     private::GetD
+    private::GetOperateProduct
 
   contains
 
@@ -905,6 +920,22 @@ module LA_Subspace
     class(LASubSpace),intent(inout)::self
     !-----------------------------------------
     GetD = self%d
+  endfunction
+
+
+  complex*16 function GetOperateProduct(self,opt)
+    implicit none
+    class(LASubSpace),intent(inout)::self
+    class(FermOper),intent(inout)::opT
+    !-----------------------------------------
+    integer::jc
+    complex*16::S(SELf%D)
+    GetOperateProduct = (0._8,0._8)
+    do jc = 1 , self%state%getlen()
+      S = SELF%GetOptActState(opt,JC,SELF%D)
+      GetOperateProduct = GetOperateProduct + SELF%GetGsProduct(JC,S)
+    enddo
+    GetOperateProduct = GetOperateProduct / self%state%getlen()
   endfunction
 
 

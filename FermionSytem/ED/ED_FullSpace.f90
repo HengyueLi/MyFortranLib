@@ -25,11 +25,11 @@
 !
 !
 ! avalable sets:
-!                  [sub] Initialization(T,Ta,H,*IsReal=.false.,*print=6)
+!                  [sub] Initialization(T,Ta,CH,IsReal,print_)
 !                        real(8)::T        ! temperature of the system
 !                        type(table)::Ta    ! must be initiated first
 !                        logical::Real
-!                        type(Ham)::H  !
+!                        type(Ham)::CH  !
 !                  [sub] Normolize_Energy_And_GetZ()
 !
 ! avalable gets:
