@@ -490,7 +490,7 @@ contains
     endfunction
 
 
-  ! 
+  !
   ! subroutine test(self)
   !   implicit none
   !   class(LH),intent(inout) :: self

@@ -14,7 +14,7 @@
 !            Fully discribe a geometry information of a lattice system.
 !
 ! STANDARD:
-!            *CALL Initialization(Vp,PC,Vl,PRINT_,show_)
+!            *CALL Initialization(Vp,PC,PCi,Vl,PRINT_,show_)
 !
 !
 ! USING LIST:
@@ -70,7 +70,7 @@
 !
 !
 ! avalable is :
-!                  ![fun] IsInitiated
+!                  [fun] IsInitiated
 ! others      :
 !                  ![sub] p
 !
@@ -124,6 +124,7 @@ module LatticeConfig
     procedure,pass::GetRealPosFromPCBsis
     procedure,pass::GetSiteRealP
     procedure,pass::GetOrbitIndex
+
   endtype
 
 
@@ -143,7 +144,9 @@ module LatticeConfig
   private::GetSiteRealP
   private::GetOrbitIndex
 
+
 contains
+
 
 
   subroutine Initialization(self,Vp,PC,PCi,Vl)
@@ -274,7 +277,7 @@ contains
 
   logical function IsInitiated(self)
     implicit none
-    class(LaCon),intent(inout)::self
+    class(LaCon),intent(in)::self
     !-------------------------------------
     IsInitiated = self%initiated
   endfunction
@@ -339,7 +342,7 @@ contains
     class(LaCon),intent(inout)::self
     integer,intent(in)::i
     !-----------------------------------
-    GetOrbitIndex = self%lci(i) 
+    GetOrbitIndex = self%lci(i)
   endfunction
 
 
