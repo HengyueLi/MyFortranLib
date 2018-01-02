@@ -5,7 +5,7 @@
 ! TYPE  : MODULE
 ! NAME  : LaPrimaryH
 ! OBJECT: TYPE(PH)
-! USED  : CodeObject,functionalsubs
+! USED  : CodeObject,functionalsubs,CPTInterType
 ! DATE  : 2017-12-23
 ! AUTHOR: hengyueli@gmail.com
 !--------------
@@ -66,83 +66,10 @@
 
 
 
-module LaprimaryHusedDatatype
-  implicit none
-
-  integer,parameter::DiscLen  = 32
-  integer,parameter::ITypeLen = 16
-
-  !-----------------
-  !  contains interacting
-  type::idata
-    character(DiscLen)  :: Disc    ! discription of the interacting
-    character(ITypeLen) :: Itype   !
-    integer             :: Para(8) !
-    complex*16          :: V       !
-    integer             :: P(3)    ! position of connectedx cluster (PC).
-
-  contains
-    procedure,pass::SetIntoMatix
-  endtype
-
-
-  private::SetIntoMatix
-
-
-contains
-
-  !  add one signle particle term into matrix
-  !  NOTICE: Matrix = Matrix + data
-  !  recognized nteracting:
-  !     [
-  !     "SpinOnSite"  ,  "OnSite"  ,  "SpinHopping"  ,  "Hopping"
-  !     ]
-  !  logcal::IsLocal  ->  put on the conjugate term.
-  subroutine SetIntoMatix(data,ns,Matrix,spini,spinj,IsLocal)
-    use functionalsubs
-    implicit none
-    class(idata),intent(in) :: data
-    integer,intent(in)      :: Ns
-    complex*16,intent(inout):: Matrix(Ns,Ns)
-    integer,intent(in)      :: spini,spinj
-    logical,intent(in)      :: IsLocal
-    !-----------------------------------
-    TYPE(funcsubs)::f                         
-
-    select case(adjustl(trim(f%get_string_upper(data%Itype))))
-    case("SPINONSITE")               !     "SpinOnSite"
-      if ( (spini==spinj) .and.  (spini==data%Para(3)) ) then
-         Matrix(data%Para(1),data%Para(1)) = Matrix(data%Para(1),data%Para(1)) + data%v
-      endif
-    case("ONSITE")                   !     "OnSite"
-      if ( (spini==spinj)                              ) then
-         Matrix(data%Para(1),data%Para(1)) = Matrix(data%Para(1),data%Para(1)) + data%v
-      endif
-    case("SPINHOPPING")             !   "SpinHopping"
-      if ( (spini==spinj).and.  (spini==data%Para(3))  ) then
-        Matrix(data%Para(1),data%Para(2)) = Matrix(data%Para(1),data%Para(2)) + data%v
-        if ( IsLocal ) then!------local term
-          Matrix(data%Para(2),data%Para(1)) = Matrix(data%Para(2),data%Para(1)) + conjg(data%v)
-        endif
-      endif
-    case("HOPPING")                !      "Hopping"
-      if ( (spini==spinj)                             ) then
-        Matrix(data%Para(1),data%Para(2)) = Matrix(data%Para(1),data%Para(2)) + data%v
-        if ( IsLocal )then !------local term
-          Matrix(data%Para(2),data%Para(1)) = Matrix(data%Para(2),data%Para(1)) + conjg(data%v)
-        endif
-      endif
-    end select
-
-  endsubroutine
-
-endmodule
-
-
 
 
 module LaPrimaryHUsedList
-  use LaprimaryHusedDatatype , only : Data => idata
+  use CPTInterType , only : Data => idata
   INCLUDE "../../ListStructure/ListStructure.finc"
 endmodule
 
@@ -153,7 +80,7 @@ endmodule
 
 module  LaPrimaryH
   use LaPrimaryHUsedList    , only : Ilist => ListStru
-  use LaprimaryHusedDatatype
+  use CPTInterType
   use CodeObject
   implicit none
 

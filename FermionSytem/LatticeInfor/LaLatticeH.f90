@@ -55,10 +55,13 @@
 !                   [fun] GetTqMatrix(q,spini,spinj)
 !                         summation of GetNearTexpMatrix
 !
+!
 ! avalable is :
 !                  ![fun] i
 ! others      :
-!                  ![sub] p
+!                   [sub] AppendLocalDataToHam(H)
+!                        for a input Type(Ham)::H, append all the local interacting (type idata) into it.
+!                        H maybe contains some other terms already, but here it does not check that.
 !
 !
 !
@@ -71,7 +74,7 @@ module LaLatticeH
   use LaPrimaryH
   use LatticeConfig
   use LaPrimaryHUsedList    , only : Ilist => ListStru
-  use LaprimaryHusedDatatype
+  use CPTInterType
   use FermionHamiltonian    , only : Ham
   implicit none
 
@@ -113,6 +116,7 @@ module LaLatticeH
     procedure,pass::SetValueByDiscription
     procedure,pass::GetLocalHMatix
     procedure,pass::GetTqMatrix
+    procedure,pass::AppendLocalDataToHam
   endtype
 
 
@@ -129,6 +133,7 @@ module LaLatticeH
   private::GetNearTMatix
   private::GetNearTexpMatrix
   private::GetTqMatrix
+  private::AppendLocalDataToHam
 
 
 contains
@@ -488,6 +493,46 @@ contains
          r = r + GetNearTexpMatrix(self,q,jc,spini,spinj)
       enddo
     endfunction
+
+    subroutine AppendLocalDataToHam(self,H)
+      implicit none
+      class(Lh),intent(inout)::self
+      class(Ham),intent(inout)::H
+      !----------------------------------------
+      integer::n,jc
+      do jc = 1 , self%NHin
+        Call self%Hin(jc)%AppendToHam(H)
+      enddo
+    endsubroutine
+    ! function GetHamList(self) result(r)
+    !   implicit none
+    !   class(VCAdH),intent(inout)::self
+    !   TYPE(Ham)::r
+    !   !----------------------------------------
+    !   type(idata)::idataarray(Nmax)
+    !   integer::n,jc,para(8)
+    !
+    !   call r%Initialization( self%ns  , self%getprint() )
+    !
+    !   call GetTotalIdataArray(self,idataarray,n)
+    !
+    !   call r%StartAppendingInteraction()
+    !   do jc = 1 , n
+    !     para = idataarray(jc)%Para
+    !     para(1:2) = para(1:2) - 1
+    !     call r%AppendingInteraction(  idataarray(jc)%Itype  , Para , idataarray(jc)%v)
+    !   enddo
+    !   call r%EndAppendingInteraction()
+    !
+    ! endfunction
+
+
+
+
+
+
+
+
 
 
   !

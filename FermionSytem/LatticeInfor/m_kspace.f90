@@ -19,12 +19,12 @@
 !                  meshtype=1 :creat GS k points
 !                  meshtype=3 :consider the symmetry and still use GS
 !avalable sets:
-!               set_print(integer(8)::whereto)
+!               set_print(integer::whereto)
 !
 !avalable gets:
 !               fun getk(jc) = real(8)::k(3)     return jc-th k point
 !               fun getw(jc) = real(8)::w        return the corresponding weight
-!               fun getnk() =integer(8)::nk      return the total number of k points
+!               fun getnk() =integer::nk      return the total number of k points
 !               fun geta(i) = real(8)::a(3)      return vectors
 !               fun getb(jc=1,2,3)=real(8)::a(3) return the reciprocal vector
 !               fun getvolr=real(8)::a           return the volue of unit cell
@@ -45,19 +45,19 @@ module class_creat_k_space
      !-------------
      type kspace
         logical,private::Initialized=.false.
-        integer(8),private::d  ! dimension of lattice
+        integer,private::d  ! dimension of lattice
         real(8),private::ai(3,3) ! vector in real space  ai=a(:,i)
         logical,private::aisetted(3)=.false.
         logical,private::is_k_created=.false.
-        integer(8),private::ni(3) !The number of point on each direction
-        integer(8),private::meshtype !to be setted
+        integer,private::ni(3) !The number of point on each direction
+        integer,private::meshtype !to be setted
         !------------------------------------------------
-        integer(8),private::nk       !\prod_i n_i : the total number of k point
+        integer,private::nk       !\prod_i n_i : the total number of k point
         real(8),allocatable,private::kpoint(:,:)
         real(8),allocatable,private::kweight(:)
         real(8),private::b(3,3)      !reprocal vectors   bi=b(:,i)
         !------------------------------------------------
-        integer(8),private::whereprint=6_8
+        integer,private::whereprint=6_8
      contains
         procedure,pass::Initialization
         !-------------------------
@@ -86,9 +86,9 @@ module class_creat_k_space
         subroutine Initialization(self,D,n1,n2,n3)
             implicit none
             class(kspace),intent(inout)::self
-            integer(8),intent(in)::D,n1,n2,n3
+            integer,intent(in)::D,n1,n2,n3
             !-----------------------------------
-            integer(8)::ni(3),jc
+            integer::ni(3),jc
             call UnInitialization(self)
             self%Initialized=.True.
             if (.NOT.(  (D.eq.1) .or. (D.eq.2) .or. (D.eq.3)))then
@@ -114,7 +114,7 @@ module class_creat_k_space
             contains
             subroutine check_ni(i,ni)
                 implicit none
-                integer(8)::i,ni
+                integer::i,ni
                 !--------------
                 if (ni.le.0)then
                     write(self%whereprint,*)"the input ni(i=)",i , "is illegal in k module setting";stop
@@ -153,7 +153,7 @@ module class_creat_k_space
         subroutine set_ai(self,i,ai)
             implicit none
             class(kspace),intent(inout)::self
-            integer(8),intent(in)::i
+            integer,intent(in)::i
             real(8),intent(in)::ai(3)
             if (i>self%d)then
                 write(self%whereprint,*)"for that i>D, ai is not nessisary to be set. This operation is ignored"
@@ -168,7 +168,7 @@ module class_creat_k_space
         subroutine set_print(self,whereto)
             implicit none
             class(kspace),intent(inout)::self
-            integer(8),intent(in)::whereto
+            integer,intent(in)::whereto
             !-----------------------------------
             self%whereprint=whereto
         end subroutine
@@ -176,7 +176,7 @@ module class_creat_k_space
             implicit none
             type(kspace),intent(in)::self
             !--------------------------------
-            integer(8)::jc
+            integer::jc
             do jc=1_8,self%d
                if (.not.(self%aisetted(jc))) then
                     check_all_needed_ai_are_setted=.false.
@@ -190,7 +190,7 @@ module class_creat_k_space
         subroutine creatk(self,meshtype)
             implicit none
             class(kspace),intent(inout)::self
-            integer(8),intent(in)::meshtype
+            integer,intent(in)::meshtype
             !----------------------------------
             select case(meshtype)
                case(0,1)
@@ -211,7 +211,7 @@ module class_creat_k_space
            real(8)::vol,tempV(3),tempV2(3),mid(3),G(3,3),J,lenth
            real(8),allocatable::x(:,:),w(:,:)
            type(Integration)::Intlist
-           integer(8)::jc,nmax,c(3),jcd
+           integer::jc,nmax,c(3),jcd
            !--------------------------------
            call vector3D_multiply(self%ai(:,1),self%ai(:,2),tempV)
            Vol=DABS(SUM(tempV*self%ai(:,3)))
@@ -270,7 +270,7 @@ module class_creat_k_space
         function getk(self,jc) result(res)
                implicit none
                class(kspace),intent(inout)::self
-               integer(8),intent(in)::jc
+               integer,intent(in)::jc
                real(8)::res(3)
                !------------------
                if (self%is_k_created) then
@@ -287,7 +287,7 @@ module class_creat_k_space
         real(8) function getw(self,jc)
                implicit none
                class(kspace),intent(inout)::self
-               integer(8),intent(in)::jc
+               integer,intent(in)::jc
                !------------------
                if (self%is_k_created) then
                    if ( (jc>0)  .and.  (jc<=self%nk)  )then
@@ -300,7 +300,7 @@ module class_creat_k_space
                end if
         end function
 
-        integer(8) function getnk(self)
+        integer function getnk(self)
                implicit none
                class(kspace),intent(inout)::self
                !-------------------------------------
@@ -314,7 +314,7 @@ module class_creat_k_space
         function geta(self,jc) result(res)
                implicit none
                class(kspace),intent(inout)::self
-               integer(8),intent(in)::jc
+               integer,intent(in)::jc
                real(8)::res(3)
                !------------------
                if (self%is_k_created) then
@@ -338,7 +338,7 @@ module class_creat_k_space
         function getb(self,jc) result(res)
                implicit none
                class(kspace),intent(inout)::self
-               integer(8),intent(in)::jc
+               integer,intent(in)::jc
                real(8)::res(3)
                !------------------
                if (self%is_k_created) then
@@ -379,7 +379,7 @@ module class_creat_k_space
                implicit none
                class(kspace),intent(inout)::self
                !--------------------------------------
-               integer(8)::jc
+               integer::jc
                getvolb=cala_volue(self%b(:,1),self%b(:,2),self%b(:,3))
                do jc = 1_8,3_8-self%d
                   getvolb=getvolb/(2._8*pi)

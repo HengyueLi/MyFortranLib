@@ -4,7 +4,7 @@
 ! TYPE  : MODULE
 ! NAME  : VCA_DeltaH
 ! OBJECT: TYPE(VCAdH)
-! USED  : CodeObject,LatticeConfig,LaPrimaryH,functionalsubs,basic_math_functions
+! USED  : CodeObject,LatticeConfig,LaPrimaryH,functionalsubs,basic_math_functions,FermionHamiltonian
 ! DATE  : 2017-12-28
 ! AUTHOR: hengyueli@gmail.com
 !--------------
@@ -54,15 +54,20 @@
 !                   [sub] SetValueByDiscription(discription,v)
 !                         character(DiscLen),intent(in)::discription   DiscLen=32?
 !                         complex*16,intent(in)::v
+!                         When this sub is called, EigenId will be changed.
 !
 ! avalable gets:
 !                   [fun] GetDelatMatrix(spini,spinj)
 !                         complex*16::GetDelatMatrix(ns,ns)
 !
+!
 ! avalable is :
 !                  ![fun] i
 ! others      :
-!                  ![sub] p
+!                  [sub] AppendDataToHam(H)
+!                        for a input Type(Ham)::H, append all the interacting (type idata) into it.
+!                        H maybe contains some other terms already, but here it does not check that.
+!
 !
 !
 !
@@ -73,7 +78,8 @@
 module VCA_DeltaH
   use CodeObject
   use LatticeConfig
-  use LaprimaryHusedDatatype
+  use CPTInterType
+  use FermionHamiltonian ,only: Ham
   implicit none
 
   !----------------------------------
@@ -116,6 +122,7 @@ module VCA_DeltaH
    procedure,pass::AppendOrbitalESDW
    procedure,pass::GetDelatMatrix
    procedure,pass::SetValueByDiscription
+   procedure,pass::AppendDataToHam
   endtype
 
   private::Initialization,StartAppending,EndAppending!,Append
@@ -127,6 +134,7 @@ module VCA_DeltaH
   private::GetIdataArrayFromVarType
   private::GetVarIdByDiscription
   private::SetRadomEigenId
+  private::AppendDataToHam
 
 contains
 
@@ -289,7 +297,7 @@ subroutine checkNmaxSamll(self,i)
 endsubroutine
 
 
-
+! check One DeltaVCA type
 SUBROUTINE GetIdataArrayFromVarType(self,Var ,idataarry,n)
   implicit none
   class(VCAdH),intent(inout):: self
@@ -365,7 +373,7 @@ SUBROUTINE GetIdataArrayFromVarType(self,Var ,idataarry,n)
 
 endsubroutine
 
-
+! check all saving VCA types.
 subroutine GetTotalIdataArray(self,idataarray,n)
   implicit none
   class(VCAdH),intent(inout):: self
@@ -435,7 +443,9 @@ endfunction
      class(VCAdH),intent(inout)::self
      !----------------------------------
      TYPE(bmathf)::f
-     self%EigenId = f%get_random_int(int(0,4),int(2147483648,4))
+     integer::RandomMax
+     RandomMax = 2**30
+     self%EigenId = f%get_random_int(0,RandomMax)
    endsubroutine
 
    subroutine SetValueByDiscription(self,Disc,rV)
@@ -452,6 +462,43 @@ endfunction
                                Program Stop";stop
      endif
      self%var(jc)%v = rv
+   endsubroutine
+
+
+   function GetHamList(self) result(r)
+     implicit none
+     class(VCAdH),intent(inout)::self
+     TYPE(Ham)::r
+     !----------------------------------------
+     type(idata)::idataarray(Nmax)
+     integer::n,jc,para(8)
+
+     call r%Initialization( self%ns  , self%getprint() )
+
+     call GetTotalIdataArray(self,idataarray,n)
+
+     call r%StartAppendingInteraction()
+     do jc = 1 , n
+       para = idataarray(jc)%Para
+       para(1:2) = para(1:2) - 1
+       call r%AppendingInteraction(  idataarray(jc)%Itype  , Para , idataarray(jc)%v)
+     enddo
+     call r%EndAppendingInteraction()
+
+   endfunction
+
+
+   subroutine AppendDataToHam(self,H)
+     implicit none
+     class(VCAdH),intent(inout)::self
+     class(Ham),intent(inout)::H
+     !----------------------------------------
+     type(idata)::idataarray(Nmax)
+     integer::n,jc
+     call GetTotalIdataArray(self,idataarray,n)
+     do jc = 1 , n
+       Call idataarray(jc)%AppendToHam(H)
+     enddo
    endsubroutine
 
 
