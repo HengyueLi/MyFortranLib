@@ -88,23 +88,31 @@ Module CEsolver
 
 
 
+  type::SolverPara
+    character(2):: SvType = "NO"    ! = "ED" / "LA"
+    logical     :: IsReal = .false.
+
+    real*8      :: Temperature
+    !--------------------------
+    ! ED use
+    !
+    !--------------------------
+    !  Lanczos use
+    real*8  :: pre      = 1.e-14
+    real*8  :: bzero    = 0.000001
+    integer :: M        = 30
+    logical :: oth      = .true.
+    real*8  :: DegPre   = 1.e-6
+  endtype
+
+
+
   TYPE,extends(Object)::CES
 
-    Character(2)::Tp   ! = "LA" or "ED" to choose solver
-
-    TYPE(LA_GCE)::LA
-    TYPE(ED_GCE)::ED
-    class(table),pointer ::ta
-    !-------------------------------------
-    !  default value for solvers
-    logical::Isreal
-    ! la
-    real*8 ::pre      = 1.e-14
-    real*8 ::bzero    = 0.000001
-    integer::M        = 30
-    logical::oth      = .true.
-    real*8 ::DegPre   = 1.e-6
-
+    class(table),pointer :: ta
+    type(SolverPara)     :: Spara
+    TYPE(LA_GCE)         :: LA
+    TYPE(ED_GCE)         :: ED
 
   contains
     procedure,pass::Initialization
@@ -143,47 +151,41 @@ Module CEsolver
 contains
 
 
-  subroutine Initialization(self,Tp,Te,Ta,Ha,isreal_,print_,show_    ,Pre_,DegPre_,Bzero_,M_,oth_)
-    use functionalsubs
-    implicit none
-    class(CES),intent(inout)   :: self
-    Character(2),intent(in)    :: Tp
-    Real*8,intent(in)          :: Te
-    class(table),target        :: Ta
-    class(Ham),target          :: Ha
-    logical,intent(in),optional:: IsReal_
-    integer,intent(in),optional::print_,show_
-    real*8,intent(in),optional     :: Pre_,DegPre_,Bzero_
-    integer,intent(in),optional    :: M_
-    logical,intent(in),optional    :: oth_
-    !-------------------------------------------
-    TYPE(funcsubs)::f
-    call self%SetInitiated(.true.)
+    subroutine Initialization(self,Svpara,Ta,Ha,print_,show_)
+      use functionalsubs
+      implicit none
+      class(CES),intent(inout)     :: self
+      class(SolverPara),intent(in) :: Svpara
+      class(table),target          :: Ta
+      class(Ham),target            :: Ha
 
-    if(present(IsReal_))  self%isreal = IsReal_
-    if (present(PRINT_))  call self%setprint(print_)
-    if (present(SHOW_))   call self%setshow(show_)!self%show   = SHOW_
-    if (present(DegPre_)) self%DegPre = DegPre_
-    if (present(Pre_))    self%Pre    = Pre_
-    if (present(Bzero_))  self%bzero  = Bzero_
-    if (present(M_))      self%M      = M_
-    if (present(oth_))    self%oth    = oth_
-    !-------------------------------------------------
+      integer,intent(in),optional::print_,show_
+      !-------------------------------------------
+      TYPE(funcsubs)::f
+      call self%SetInitiated(.true.)
 
-    self%Tp = f%get_string_upper(Tp)
-    self%Ta => ta
-    select case(self%Tp)
-    case("ED")
-      call self%ed%Initialization(T=Te,Ta=Ta,CH=Ha,IsReal=self%isreal,print_=self%getprint())
-    case("LA")
-      call self%la%Initialization(Ta=Ta,H=Ha,IsReal_=self%isreal,PRINT_=self%getprint(),&
-           SHOW_=self%getshow(),Pre_=self%pre,DegPre_=self%DegPre,Bzero_=self%bzero,M_=self%m,oth_=self%oth)
-    case default
-      write(self%getprint(),*)"ERROR: Unknow solver type:",Tp;stop
-    endselect
 
-  endsubroutine
+      if (present(PRINT_))  call self%setprint(print_)
+      if (present(SHOW_))   call self%setshow(show_)!self%show   = SHOW_
 
+      self%Spara = svpara
+      !-------------------------------------------------
+
+      self%Spara%SvType = f%get_string_upper(self%Spara%SvType)
+      self%Ta => ta
+      select case(self%Spara%SvType)
+      case("ED")
+        call self%ed%Initialization(T=self%Spara%Temperature,Ta=Ta,CH=Ha,IsReal=self%spara%IsReal &
+           ,print_=self%getprint())
+      case("LA")
+        call self%la%Initialization(Ta=Ta,H=Ha,IsReal_=self%spara%IsReal,PRINT_=self%getprint(),&
+             SHOW_=self%getshow(),Pre_=self%spara%pre,DegPre_=self%spara%DegPre,Bzero_=self%spara%bzero,&
+             M_=self%spara%m,oth_=self%spara%oth)
+      case default
+        write(self%getprint(),*)"ERROR: Unknow solver type:",self%Spara%SvType;stop
+      endselect
+
+    endsubroutine
 
 
   function InterGetEDPointer(ED)  result(p)
@@ -208,7 +210,7 @@ contains
     class(ED_GCE),pointer::r
     !-------------------------------------
     call SELF%CheckInitiatedOrStop()
-    if (self%Tp=="ED")then
+    if (self%Spara%SvType=="ED")then
       r => InterGetEDPointer(self%ed)!self%ed
     else
       write(self%getprint(),*)"ERROR: Rectent solver is not ED type";stop
@@ -221,7 +223,7 @@ contains
     class(LA_GCE),pointer::r
     !-------------------------------------
     call SELF%CheckInitiatedOrStop()
-    if (self%Tp=="LA")then
+    if (self%Spara%SvType=="LA")then
       r => InterGetLAPointer(SELF%LA) !self%la
     else
       write(self%getprint(),*)"ERROR: Rectent solver is not LA type";stop
@@ -233,7 +235,7 @@ contains
     implicit none
     class(CES),intent(inout)   :: self
     !-------------------------------------
-    select case(self%tp)
+    select case(self%Spara%SvType)
     case("ED")
       call self%ed%SynchronizeWithHamiltonian()
     case("LA")
@@ -250,7 +252,7 @@ contains
    character(2),intent(in)    :: Tp
    !-------------------------------------
    call self%CheckInitiatedOrStop()
-   if (self%Tp==Tp)then
+   if (self%Spara%SvType==Tp)then
    else
       write(self%getprint(),*)"ERROR: Solver type is not ",TP;stop
    endif
@@ -278,7 +280,7 @@ contains
     implicit none
     class(CES),intent(inout)   :: self
     !-------------------------------------
-    select case(self%tp)
+    select case(self%Spara%SvType)
     case("ED")
       GetEg = self%ed%get_Eg()
     case("LA")
@@ -294,7 +296,7 @@ contains
     !-------------------------------------
     call self%CheckInitiatedOrStop()
     call self%SynchronizeWithHamiltonian()
-    select case(self%tp)
+    select case(self%Spara%SvType)
     case("ED")
       GetOperatorProduct = self%ed%get_trace_value(opt)
     case("LA")
@@ -309,7 +311,7 @@ contains
     class(CES),intent(inout)::self
     !-------------------------------------
     call self%CheckInitiatedOrStop()
-    GetSolverType = self%tp
+    GetSolverType = self%Spara%SvType
   endfunction
 
 

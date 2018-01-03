@@ -59,19 +59,20 @@ module CE_Green
   use ED_GCE_G
   implicit none
 
-  type,extends(object)::CEG
-    class(CES),pointer::solver => null()
 
-    character(2)      :: TP
-    integer::ns
 
-    !------------------------
-    !  lanczos G used
+  type::GreenPara
+    ! lanczos G use
     integer :: M     = 90
     logical :: oth   = .true.
     real*8  :: bzero = 1.e-7
+  endtype
 
+  type,extends(object)::CEG
 
+    integer::ns
+    class(CES),pointer::solver => null()
+    type(GreenPara)::GP
   contains
     procedure,pass::Initialization
 
@@ -87,26 +88,22 @@ module CE_Green
 contains
 
 
-  subroutine Initialization(self,solver,PRINT_,SHOW_,M_,OTH_,BZERO_)
+  subroutine Initialization(self,solver,GP,PRINT_,SHOW_)
     implicit none
     class(CEG),intent(out)                 :: self
     class(CES),intent(in )         ,target :: solver
-    integer   ,intent(in ),optional        :: PRINT_,SHOW_,M_
-    logical   ,intent(in ),optional        :: oth_
-    real*8    ,intent(in ),optional        :: Bzero_
+    class(GreenPara),intent(in)            :: GP
+    integer   ,intent(in ),optional        :: PRINT_,SHOW_
     !------------------------------------
     call self%SetInitiated(.true.)
 
+
+    self%solver    => solver
+    self%Gp        = Gp
     if( present( print_   )  )  call self%setprint(print_)
     if( present( show_    )  )  call self%setshow(show_  )
-    if( present( M_       )  )  self%m     = m_
-    if( present( oth_     )  )  self%oth   = oth_
-    if( present( bzero_   )  )  self%bzero = bzero_
 
-
-    self%solver => solver
-    self%tp = self%solver%GetSolverType()
-    self%ns = self%solver%getns()
+    self%ns        = self%solver%getns()
 
   endsubroutine
 
@@ -123,14 +120,15 @@ contains
     class(ED_GCE),pointer::ED
     class(LA_GCE),pointer::la
     call self%CheckInitiatedOrStop()
-    select case(self%tp)
+    select case(self%solver%GetSolverType())
     case("ED")
       ed => self%solver%GetEdPointer()
       call edg%Initialization(ED,self%getprint())
       call edg%GetG(i,spini,j,spinj,Nomega,Omega,G)
     case("LA")
       la => self%solver%GetlaPointer()
-      call lag%Initialization(LA,i,spini,j,spinj ,self%m,self%oth,self%bzero,self%getprint(),self%getshow())
+      call lag%Initialization(LA,i,spini,j,spinj ,self%gp%m,self%gp%oth,self%gp%bzero,&
+            self%getprint(),self%getshow())
       call lag%GetG(Nomega,Omega,G)
     endselect
   endsubroutine

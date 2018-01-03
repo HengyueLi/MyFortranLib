@@ -175,6 +175,16 @@ module ED_Subspace
     do jcopra = 1_8 , self%hi%GetOptN()
        opr    => self%hi%GetOptact(jcopra)
        v      =  self%Hi%GetOptV(jcopra)
+
+
+                                        ! write(*,"(  (I2),',',(I2) )")jcopra,self%hi%GetOptN()
+                                        ! write(*,"(I2)")opr%get_optid()
+                                        ! write(*,*)opr%get_para()
+                                        ! write(*,"(f6.3)")real(v)
+                                        ! write(*,*)"-------------------"
+
+
+
        !------------------------------
        !    for ( opr  ,   v   )
        do jcj = 1 , self%d
@@ -198,7 +208,7 @@ module ED_Subspace
     class(EDSubSpace),intent(inout)::self
     !---------------------------------------
     TYPE(nummethod)::num
-    real*8,allocatable::Hr(:,:)
+    real*8,allocatable::Hr(:,:)                       
 
     call set_Hamiltonian_matrix_element(self)
 
@@ -213,7 +223,6 @@ module ED_Subspace
       call num%ED_Hermitian_matrix("U",self%d,self%Hs,self%E)
     endif
     !--------------
-
     self%Normolized = .false.
 
   endsubroutine

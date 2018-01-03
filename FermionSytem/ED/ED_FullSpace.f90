@@ -215,7 +215,7 @@ contains
              !------------------------------------
              integer(8)::jc
              do jc = 1_8 ,self%Nsub
-                call self%Hspace(jc)%diagonalization()
+                call self%Hspace(jc)%diagonalization()    
              enddo
              self%Normolized = .false.
              self%EigenId = self%CH%GetEigenId()

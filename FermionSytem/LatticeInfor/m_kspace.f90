@@ -7,12 +7,12 @@
 ! NAME  : class_creat_k_space
 ! OBJECT: TYPE(kspace)
 ! USED  : class_integration
-! DATE  : 2017-05-10
+! DATE  : 2018-01-03
 ! AUTHOR: Hengyue Li
 !--------------
 ! DESCRIPTION:
 !            creat the reciprocal space of a lattice system.
-!            step1 *call self%Initialization(Dim,n1,n2,n3) :  if Dim<3, say Dim=1, n2, n3 can be any value
+!            step1 *call self%Initialization(n1,n2,n3) :  if Dim<3, say Dim=1, n2, n3 can be any value
 !            setp2 *call self%set_ai(i,v(3)) where i=1,2,3 to set the position of lattice vector
 !            setp3 call self%creatk(meshtype) to creat the Brillouin zone
 !                  meshtype=0 :creat equal distant k points

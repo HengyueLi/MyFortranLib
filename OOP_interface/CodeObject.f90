@@ -41,9 +41,12 @@
 !
 ! avalable is :
 !                   [fun] IsInitiated()
+!
+!
 ! others      :
 !                   [sub] CheckInitiatedOrStop()
 !                         check if this object is initiated, if not, stop and report.
+!
 !
 !
 !
