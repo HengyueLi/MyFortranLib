@@ -5,7 +5,7 @@
 ! TYPE  : MODULE
 ! NAME  : VCA_WaldFun
 ! OBJECT: TYPE(waldf)
-! USED  : CodeObject , LaLatticeH , VCA_DeltaH , CEsolver , CE_Green
+! USED  : CodeObject , LaLatticeH , VCA_DeltaH , CEsolver , CE_Green , CreateKspace , fermion_table , class_numerical_method
 ! DATE  : 2018-01-02
 ! AUTHOR: hengyueli@gmail.com
 !--------------
@@ -31,11 +31,24 @@
 !
 !
 ! avalable sets:
-!                   [sub] I
+!                   [sub] Initialization(Ta,SP,GP,CPTH,dH,jobi,jobr,print_,show_)
+!                          class(table),target,intent(inout):: Ta
+!                          class(SolverPara),intent(in)     :: SP
+!                          class(GreenPara),intent(in)      :: GP
+!                          class(LH),target,intent(inout)   :: CPTh
+!                          class(VCAdH),target,intent(inout):: dH
+!                          integer,intent(in)               :: jobi(:)
+!                          real*8 ,intent(in)               :: jobr(:)
+!                          integer,intent(in),optional      :: print_
+!                          integer,intent(in),optional      :: show_
+!
+!                          -----------------------
+!                          jobi(1)   = method
+!                          jobi(2:4) = n1,n2,n3 the samoling points on each direction in Kspace.
 !
 ! avalable gets:
 !
-!                   [fun] G
+!                   [fun] GetLatticeOmegaPerSite()
 !
 !
 ! avalable is :
@@ -193,6 +206,9 @@ module VCA_WaldFun
   use CreatArcPath
   use phyfunc
   use class_integration
+  use CreateKspace
+  use fermion_table
+  use class_numerical_method
   implicit none
 
 
@@ -202,6 +218,7 @@ module VCA_WaldFun
     private
     integer::jobi(NparaMax)
     real*8 ::jobr(NparaMax)
+    class(table),pointer:: Ta => null()
     type(SolverPara) :: SP
     TYPE(GreenPara)  :: Gp
 
@@ -212,23 +229,31 @@ module VCA_WaldFun
     integer:: IntNomega
     complex*16,allocatable:: IntOmega(:)
     complex*16,allocatable:: IntOmegaWeight(:)
-    complex*16,allocatable:: SavedG(:,:,:)     ! G(  2NS , 2NS  , Nomega  )
+
+    integer::ns
+    complex*16,allocatable :: SavedG(:,:,:)     ! G( Nomega , 2NS , 2NS   )
+    real*8                 :: OmegaPri
+    TYPE(Kspace)::k
 
   contains
     procedure,pass::Initialization
     final::Finalization
 
+    procedure,pass::GetLatticeOmegaPerSite
   endtype
 
 
   private::Initialization,Finalization
   private::AllocateIntergrationPath,AllocateIntergrationPath_method2
+  private::GetSavingGandGrandPotetial
+  private::FuncF,GetVkMatrix,GetI,GetLatticeOmegaPerSite
 
 contains
 
-  subroutine Initialization(self,SP,GP,CPTH,dH,jobi,jobr,print_,show_)
+  subroutine Initialization(self,Ta,SP,GP,CPTH,dH,jobi,jobr,print_,show_)
     implicit none
     class(waldf),intent(inout)       :: self
+    class(table),target,intent(inout):: Ta
     class(SolverPara),intent(in)     :: SP
     class(GreenPara),intent(in)      :: GP
     class(LH),target,intent(inout)   :: CPTh
@@ -238,12 +263,14 @@ contains
     integer,intent(in),optional      :: print_
     integer,intent(in),optional      :: show_
     !-------------------------------------------------------------
+    call Finalization(self)
     call self%SetInitiated(.true.)
     if (present(print_)) call self%SetPrint(print_)
     if (present(show_))  call self%SetShow(show_)
 
-    self%SP   = SP
-    self%Gp   = gp
+    self%Ta   => Ta
+    self%SP   =  SP
+    self%Gp   =  gp
     self%cptH => cptH
     self%dh   => dH
 
@@ -253,6 +280,10 @@ contains
     self%jobi(1:size(jobi)) = jobi
     self%jobr(1:size(jobr)) = jobr
     self%temperature = SP%temperature
+    self%ns          = ta%get_ns()
+
+    call self%k%Initialization( a = self%cptH%GetVbasis(),n=self%jobi(2:4),meshtype=1,&
+                                print_=self%getprint(),show_=self%getshow() )
 
 
     call AllocateIntergrationPath(self)
@@ -287,8 +318,8 @@ contains
   ! Arc intergration
   ! jobr(1) = arc R. The scale of circle
   ! jobr(2) = theta. A small angle used to treat the near-zero problem.
-  ! jobi(2) = sampling points in R part(large part).
-  ! jobi(3) = sampling points in theta regime.
+  ! jobi(5) = sampling points in R part(large part).
+  ! jobi(6) = sampling points in theta regime.
   subroutine AllocateIntergrationPath_method2(self)
     implicit none
     class(waldf),intent(inout)  :: self
@@ -302,13 +333,13 @@ contains
     TYPE(VCAWandArc)::VcAW
 
     call VcAW%Initialization(R=self%jobr(1),theta=self%jobr(2)&
-      ,nr=self%jobi(2),ntheta=self%jobi(3) )
+      ,nr=self%jobi(5),ntheta=self%jobi(6) )
 
 
-    self%IntNomega = sum(self%jobi(2:3))  * 2
-    allocate(  self%IntOmega(self%IntNomega)         )
-    allocate(  self%IntOmegaWeight(self%IntNomega)   )
-
+    self%IntNomega = sum(self%jobi(5:6))  * 2
+    allocate(  self%IntOmega(self%IntNomega)                                     )
+    allocate(  self%IntOmegaWeight(self%IntNomega)                               )
+    allocate(  self%SavedG(self%IntNomega,self%ta%get_ns()*2,self%ta%get_ns()*2) )
 
     call VcAW%GetOmegaWeigth(self%IntOmega,self%IntOmegaWeight)
 
@@ -318,9 +349,138 @@ contains
         self%IntOmegaWeight(jc2) = (0._8,1._8)/2._8/pi*self%IntOmegaWeight(jc2) &
                         * f%FermionFunc(self%IntOmega(jc2),self%temperature)
      enddo
+  endsubroutine
 
+
+
+  subroutine GetSavingGandGrandPotetial(self)
+    implicit none
+    class(waldf),intent(inout)  :: self
+    !----------------------------------------------
+    type(CES)::solver
+    TYPE(CEG)::G
+    TYPE(Ham)::H
+    integer::ns,jc1,jc2                                     !,jc
+    complex*16::tempG(self%IntNomega,self%ns,self%ns)       !;class(FermOper),pointer::p
+
+    ns = self%ta%get_ns()
+
+
+    !----------------------------------------------
+    !  get H
+    call H%Initialization(ns,self%getprint())
+    call H%StartAppendingInteraction()
+    Call self%cptH%AppendLocalDataToHam(H)
+    Call self%dH%AppendDataToHam(H)
+    call h%EndAppendingInteraction()
+
+
+    ! do jc = 1 , H%GetOptN()
+    !   p => h%GetOptact(jc)
+    !   write(*,*)jc,"/",H%GetOptN()
+    !   write(*,*)"optid=",p%get_optid()
+    !   write(*,*)"V=",H%GetOptV(jc)
+    !   write(*,*)"para=",p%get_para()
+    !
+    ! enddo   ;stop
+
+
+    !-----------------------------------------------
+
+    Call solver%Initialization( self%SP , self%Ta, H , self%getprint() , self%getshow() )
+    Call solver%SynchronizeWithHamiltonian()
+
+    self%OmegaPri = solver%GetGrandPotential()
+
+
+    Call G%Initialization(solver,self%Gp,self%getprint() , self%getshow()+1)
+
+    call G%GetGreenMatrix(spini=0,spinj=0,NOmega=self%IntNomega,Omega=self%IntOmega&
+                    , GM=tempG)     ;  self%SavedG(:,1:ns,1:ns) = tempG
+    call G%GetGreenMatrix(spini=1,spinj=1,NOmega=self%IntNomega,Omega=self%IntOmega&
+                    , GM=tempG)     ;  self%SavedG(:,ns+1:2*ns,ns+1:2*ns)= tempG
+    call G%GetGreenMatrix(spini=0,spinj=1,NOmega=self%IntNomega,Omega=self%IntOmega&
+                    , GM=tempG)     ;  self%SavedG(:,1:ns,ns+1:2*ns)  = tempG
+
+    forall(jc1=1:self%IntNomega)
+       self%SavedG(jc1,ns+1:2*ns,1:ns) = transpose( conjg( self%SavedG(jc1,1:ns,ns+1:2*ns) ) )
+    endforall
 
   endsubroutine
+
+  ! V(2ns,2ns)
+  function GetVkMatrix(self,k,alpha) result(vk)
+    implicit none
+    class(waldf),intent(inout)  :: self
+    real*8,intent(in)           :: k(3)
+    real*8,intent(in)           :: alpha
+    complex*16::vk(self%ns*2,self%ns*2)
+    !----------------------------------------------
+    vk = self%cptH%GetSpinSuppresedTq(k) * alpha - self%dH%GetDeltaMatrixSpinSupp()
+  endfunction
+
+
+
+  ! F = \sum_k \ln\det[1-V_{k\Delta}G']
+  complex*16 function FuncF(self,omegaid)
+    IMPLICIT NONE
+    class(waldf),intent(inout)  :: self
+    integer,intent(in)::omegaid
+    !------------------------------
+    TYPE(nummethod)::f
+    integer::jck,i,j,jc
+    complex*16::temp(self%ns*2,self%ns*2),Vk(self%ns*2,self%ns*2)
+    complex*16::G(self%ns*2,self%ns*2),Omegat(1),temp1
+    real*8::k(3),w
+    !--------- initiate ------------
+    FuncF = (0._8,0._8)
+    !----------get G----------------
+    G = self%SavedG(omegaid,:,:)
+    !----------sum k---------------
+
+    do jck = 1 , self%k%getnk()
+       k =  self%k%getk(jck)
+       w =  self%k%getw(jck)
+  !
+       temp = (0._8,0._8)
+       do jc = 1 , self%ns * 2
+         temp(jc,jc) = (1._8,0._8)
+       enddo
+
+       vk = GetVkMatrix(self,k, self%dh%GetAlpha()  )
+       temp = temp - matmul( Vk , G )
+       temp1 = zlog( f%get_determinant_of_Matrix(self%ns*2,temp) )
+       FuncF = FuncF +  temp1 * w
+     enddo
+  endfunction
+
+
+  real*8 function GetI(self)
+    IMPLICIT NONE
+    class(waldf),intent(inout)  :: self
+    !--------------------------------------
+    integer::jc
+    complex*16::ret
+
+    ret = (0._8,0._8)
+    do jc = 1 , self%IntNOmega
+       ret = ret + FuncF(self,jc) * self%IntOmegaWeight(jc)
+    enddo
+    GetI = 2._8 * real(ret)
+  endfunction
+
+  real*8 function GetLatticeOmegaPerSite(self)
+    IMPLICIT NONE
+    class(waldf),intent(inout)  :: self
+    !--------------------------------------
+    call self%CheckInitiatedOrStop()
+    call GetSavingGandGrandPotetial(self)
+    GetLatticeOmegaPerSite = self%OmegaPri - GetI(self)
+    GetLatticeOmegaPerSite = GetLatticeOmegaPerSite / self%ns
+  endfunction
+
+
+
 
 
 

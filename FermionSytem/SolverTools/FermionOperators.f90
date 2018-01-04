@@ -77,6 +77,7 @@
 !
 !                  [fun] get_para()
 !                        integer::get_para(8)
+!
 !                  [fun] get_optid()
 !                        integer::get_optid
 ! avalable IS  :
@@ -612,7 +613,7 @@ module FermionOperators
          if (  sum(abs(a%para - b%para)).eq.0   )then
             CheckTwoTheSame = .true.
          endif
-      endif            
+      endif
     endfunction
 
 

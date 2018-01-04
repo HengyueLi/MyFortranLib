@@ -6,7 +6,7 @@
 ! TYPE  : MODULE
 ! NAME  : CreateKspace
 ! OBJECT: TYPE(Kspace)
-! USED  : CodeObject
+! USED  : CodeObject , class_integration
 ! DATE  : 2017-08-9
 ! AUTHOR: Hengyue Li
 !--------------
@@ -25,7 +25,7 @@
 !
 !
 ! avalable sets:
-!                  [sub] Initialization(a,n,meshtype)
+!                  [sub] Initialization(a,n,meshtype,print_,show_)
 !                        real*8::a(3,3)
 !                        integer::n(3) ! represent the sampling points in each axis.
 !                        integer::meshtype
@@ -111,6 +111,7 @@ contains
     integer,intent(in)          :: meshtype
     integer,intent(in),optional :: print_,show_
     !------------------------------------------------
+    call Finalization(self)
     call self%SetInitiated(.true.)
     self%a        = a
     self%n        = n

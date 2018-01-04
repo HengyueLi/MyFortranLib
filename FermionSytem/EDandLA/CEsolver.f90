@@ -24,20 +24,11 @@
 !
 !
 ! avalable sets:
-!                  [sub] Initialization(Tp,Te,Ta,Ha,isreal_,print_,show_,Pre_,DegPre_,Bzero_,M_,oth_)
-!                        Character(2),intent(in)       :: Tp           ! = "ed" or "LA"
-!                        Real*8,intent(in)             :: Te           ! temperature
-!                        class(table),target           :: Ta           ! table
-!                        class(Ham),target             :: Ha           ! Hamiltonian
-!                        logical,intent(in),optional   :: IsReal_      ! real problem or not
-!                        integer,intent(in),optional   :: print_,show_ !
-!                        !----------lanczos options---------------------------
-!                        real*8,intent(in),optional    :: Pre_,DegPre_,Bzero_
-!                        integer,intent(in),optional   :: M_
-!                        logical,intent(in),optional   :: oth_
-!-------------------------------------------
-!
-!
+!                  [sub] Initialization(Svpara,Ta,Ha,print_,show_)
+!                        class(SolverPara),intent(in) :: Svpara
+!                        class(table),target          :: Ta
+!                        class(Ham),target            :: Ha
+!                        integer,intent(in),optional::print_,show_
 !
 !
 ! avalable gets:
@@ -67,6 +58,9 @@
 !                         COMPLEX*16::GetOperatorProduct
 !                         return
 !                               <A> = Tr( e^-{\beta*H} A ) / Tr( e^-{\beta*H} )
+!
+!                   [fun] GetGrandPotential()
+!                         real*8
 !
 ! avalable is :
 !                  ![fun] i
@@ -133,6 +127,7 @@ Module CEsolver
     procedure,pass::GetEg
     procedure,pass::GetOperatorProduct
     procedure,pass::GetNs
+    procedure,pass::GetGrandPotential
   endtype
 
 
@@ -148,6 +143,7 @@ Module CEsolver
   private::GetOperatorProduct
   private::GetSolverType
   private::GetNs
+  private::GetGrandPotential
 contains
 
 
@@ -321,6 +317,19 @@ contains
     class(CES),intent(inout)::self
     !-------------------------------------
     GetNs = self%ta%get_ns()
+  endfunction
+
+  real*8 function GetGrandPotential(self)
+    implicit none
+    class(CES),intent(inout)::self
+    !-------------------------------------
+    select case(self%Spara%SvType)
+    case("ED")
+      GetGrandPotential = self%ed%get_Eg() &
+                        - self%Spara%Temperature*dlog( self%ed%GetRz() )
+    case("LA")
+      GetGrandPotential = self%la%GetEg()
+    endselect
   endfunction
 
 

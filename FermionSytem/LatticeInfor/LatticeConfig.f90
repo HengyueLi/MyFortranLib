@@ -63,6 +63,9 @@
 !                   [fun] GetVl()
 !                         return integer::vl(3,3)
 !
+!                   [fun] GetVlReal()
+!                         return real*8::vl(3,3)  (in real space.)
+!
 !                   [fun] GetRealPosFromPCBsis(p)
 !                         return real*8::r(3)
 !                         for a input integer::p(3) -> represent a position by using PC basis
@@ -124,7 +127,7 @@ module LatticeConfig
     procedure,pass::GetRealPosFromPCBsis
     procedure,pass::GetSiteRealP
     procedure,pass::GetOrbitIndex
-
+    procedure,pass::GetVlReal
   endtype
 
 
@@ -143,7 +146,7 @@ module LatticeConfig
   private::GetRealPosFromPCBsis
   private::GetSiteRealP
   private::GetOrbitIndex
-
+  private::GetVlReal
 
 contains
 
@@ -316,6 +319,16 @@ contains
     !-----------------------------------
     r = self%vl
   endfunction
+
+  Function GetVlReal(self) result(r)
+    implicit none
+    class(LaCon),intent(inout)::self
+    real*8::r(3,3)
+    !-----------------------------------
+    r = matmul(self%vp , self%vl*1._8)
+  endfunction
+
+
 
   function GetRealPosFromPCBsis(self,p) result(r)
     implicit none

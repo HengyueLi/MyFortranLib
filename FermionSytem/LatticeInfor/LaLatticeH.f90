@@ -45,6 +45,9 @@
 !                         return complex*16::M(ns,ns)
 !                         where ns is the LC size
 !
+!                   [fun] GetSpinSuppresedLocalHMatrix()
+!                         2ns 2ns matrix
+!
 !                   [fun] GetNearTMatix(i,spini,spinj)
 !                         return complex*16::M(ns,ns)
 !                         the i-th connected T   (exp part is not included)
@@ -53,7 +56,13 @@
 !                         GetNearTMatix multiply by exp( i r.q )
 !
 !                   [fun] GetTqMatrix(q,spini,spinj)
-!                         summation of GetNearTexpMatrix
+!                         summation of GetNearTexpMatrix,  this is Tq
+!
+!                   [fun] GetSpinSuppresedTq(q)
+!                         2ns X 2ns matrix where both spin have been contained.
+!
+!                   [fun] GetVbasis()
+!                         real*8::GetVbasis(3,3)  the basis of LC.
 !
 !
 ! avalable is :
@@ -117,6 +126,9 @@ module LaLatticeH
     procedure,pass::GetLocalHMatix
     procedure,pass::GetTqMatrix
     procedure,pass::AppendLocalDataToHam
+    procedure,pass::GetVbasis
+    procedure,pass::GetSpinSuppresedTq
+    procedure,pass::GetSpinSuppresedLocalHMatrix
   endtype
 
 
@@ -134,7 +146,9 @@ module LaLatticeH
   private::GetNearTexpMatrix
   private::GetTqMatrix
   private::AppendLocalDataToHam
-
+  private::GetVbasis
+  private::GetSpinSuppresedTq
+  private::GetSpinSuppresedLocalHMatrix
 
 contains
 
@@ -435,6 +449,25 @@ contains
     enddo
   endfunction
 
+  function GetSpinSuppresedLocalHMatrix(self,spini,spinj) result(r)
+    implicit none
+    class(LH),intent(inout) :: self
+    complex*16::r(self%ns*2,self%ns*2)
+    !-----------------------------------
+    integer::spini,spinj,l1,l2,r1,r2
+    integer::jc
+    do spini = 0 , 1
+      do spinj = 0 , 1
+         l1 = spini * self%ns + 1
+         l2 = l1 + self%ns - 1
+         r1 = spinj * self%ns + 1
+         r2 = r1 + self%ns - 1
+         r(l1:l2,r1:r2) =  GetLocalHMatix(self,spini=spini,spinj=spinj)
+      enddo
+    enddo
+  endfunction
+
+
 
 
   ! Get near connected T (exp part is not included.)
@@ -494,6 +527,28 @@ contains
       enddo
     endfunction
 
+    function GetSpinSuppresedTq(self,q) result(r)
+      implicit none
+      class(LH),intent(inout)  :: self
+      real*8,intent(in)::q(3)
+      complex*16::r(self%ns*2,self%ns*2)
+      !-------------------------------------
+      integer::spini,spinj,l1,l2,r1,r2
+      integer::jc
+      do spini = 0 , 1
+        do spinj = 0 , 1
+           l1 = spini * self%ns + 1
+           l2 = l1 + self%ns - 1
+           r1 = spinj * self%ns + 1
+           r2 = r1 + self%ns - 1
+           r(l1:l2,r1:r2) =  GetTqMatrix(self,q,spini=spini,spinj=spinj)
+        enddo
+      enddo
+    endfunction
+
+
+
+
     subroutine AppendLocalDataToHam(self,H)
       implicit none
       class(Lh),intent(inout)::self
@@ -504,6 +559,14 @@ contains
         Call self%Hin(jc)%AppendToHam(H)
       enddo
     endsubroutine
+
+    function GetVbasis(self) result(r)
+      implicit none
+      class(Lh),intent(inout)::self
+      real*8::r(3,3)
+      !--------------------------------
+      r = self%LaC%GetVlReal()
+    endfunction
     ! function GetHamList(self) result(r)
     !   implicit none
     !   class(VCAdH),intent(inout)::self

@@ -23,11 +23,10 @@
 !
 !
 ! avalable sets:
-!                  [sub] Initialization(solver,PRINT_,SHOW_,M_,OTH_,BZERO_)
-!                          class(CES),intent(in )         ,target :: solver
-!                          integer   ,intent(in ),optional        :: PRINT_,SHOW_,M_
-!                          logical   ,intent(in ),optional        :: oth_
-!                          real*8    ,intent(in ),optional        :: Bzero_
+!                  [sub] Initialization(solver,GP,PRINT_,SHOW_)
+!                        class(CES),intent(in )         ,target :: solver
+!                        class(GreenPara),intent(in)            :: GP
+!                        integer   ,intent(in ),optional        :: PRINT_,SHOW_
 !
 !
 ! avalable gets:
@@ -35,11 +34,14 @@
 !                          integer,intent(in )::i,spini,j,spinj,Nomega
 !                          complex*16,intent(in )::Omega(Nomega)
 !                          complex*16,intent(out)::G(Nomega)
+!                        here the matrix index is 0-basis
 !
 !                   [sub] GetGreenMatrix(spini,spinj,NOmega,Omega,GM)
 !                          integer,intent(in)::spini,spinj,Nomega
 !                          complex*16,intent(in)::Omega(Nomega)
 !                          complex*16,intent(out)::GM(Nomega,self%ns,self%ns)
+!                         here the matri index is 1-basis
+!
 !
 !
 ! avalable is :
@@ -140,12 +142,14 @@ contains
     complex*16,intent(in)::Omega(Nomega)
     complex*16,intent(out)::GM(Nomega,self%ns,self%ns)
     !---------------------------------
-    integer::jc1,jc2
+    integer::jc1,jc2,i,j
 
     if (spini==spinj)then
       do jc1 =1 , self%ns
         do jc2 = jc1 , self%ns
-          call GetG(self,jc1,spini,jc2,spinj,Nomega,Omega,GM(:,jc1,jc2))
+          i = jc1 - 1
+          j = jc2 - 1
+          call GetG(self,i,spini,j,spinj,Nomega,Omega,GM(:,jc1,jc2))
         enddo
       enddo
       do jc1 =1 , self%ns
@@ -156,7 +160,9 @@ contains
     else
       do jc1 =1 , self%ns
         do jc2 = 1 , self%ns
-            call GetG(self,jc1,spini,jc2,spinj,Nomega,Omega,GM(:,jc1,jc2))
+            i = jc1 - 1
+            j = jc2 - 1
+            call GetG(self,i,spini,j,spinj,Nomega,Omega,GM(:,jc1,jc2))
         enddo
       enddo
     endif

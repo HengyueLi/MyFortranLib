@@ -60,6 +60,9 @@
 !                   [fun] GetDelatMatrix(spini,spinj)
 !                         complex*16::GetDelatMatrix(ns,ns)
 !
+!                   [fun] GetDeltaMatrixSpinSupp()
+!                         2ns X 2ns matrix  complex*16
+!
 !
 ! avalable is :
 !                  ![fun] i
@@ -109,8 +112,9 @@ module VCA_DeltaH
     class(LaCon),pointer :: Lconf => null()    ! lattice configruatioin
 
     !--------------------------------
-    integer    ::Nvar
-    type(Vterm)::Var(NVmax)
+    integer    :: Nvar
+    type(Vterm):: Var(NVmax)
+    real*8     :: alpha = 1._8
     !---------------------------------
   contains
    procedure,pass::Initialization
@@ -123,6 +127,8 @@ module VCA_DeltaH
    procedure,pass::GetDelatMatrix
    procedure,pass::SetValueByDiscription
    procedure,pass::AppendDataToHam
+   procedure,pass::GetDeltaMatrixSpinSupp
+   procedure,pass::GetAlpha
   endtype
 
   private::Initialization,StartAppending,EndAppending!,Append
@@ -135,6 +141,8 @@ module VCA_DeltaH
   private::GetVarIdByDiscription
   private::SetRadomEigenId
   private::AppendDataToHam
+  private::GetDeltaMatrixSpinSupp
+  private::GetAlpha
 
 contains
 
@@ -414,6 +422,27 @@ function GetDelatMatrix(self,spini,spinj) result(r)
   endif
 endfunction
 
+function GetDeltaMatrixSpinSupp(self) result(r)
+  implicit none
+  class(VCAdH),intent(inout)::self
+  complex*16::r(self%ns*2,self%ns*2)
+  !-----------------------------------
+  integer::spini,spinj,l1,l2,r1,r2
+  integer::jc
+  do spini = 0 , 1
+    do spinj = 0 , 1
+       l1 = spini * self%ns + 1
+       l2 = l1 + self%ns - 1
+       r1 = spinj * self%ns + 1
+       r2 = r1 + self%ns - 1
+       r(l1:l2,r1:r2) =  GetDelatMatrix(self,spini=spini,spinj=spinj)
+    enddo
+  enddo
+endfunction
+
+
+
+
 
 
   integer function GetVarIdByDiscription(self,Disc)
@@ -500,6 +529,13 @@ endfunction
        Call idataarray(jc)%AppendToHam(H)
      enddo
    endsubroutine
+
+   real*8 function GetAlpha(self)
+     implicit none
+     class(VCAdH),intent(inout)::self
+     !----------------------------------------
+     GetAlpha = self%alpha
+   endfunction
 
 
 
