@@ -102,6 +102,11 @@ module  LaPrimaryH
     procedure,pass::GetLen
     procedure,pass::GetIdata
     procedure,pass::GetState
+
+
+
+    ! procedure :: Copy
+    ! generic :: assignment(=) => Copy
   endtype
 
 
@@ -110,8 +115,18 @@ module  LaPrimaryH
   private::Allowed_S2,Allowed_S3,StartAppending,Append,EndAppending
 
   private::GetLen,GetIdata,GetState
+  private::Copy
 
 contains
+
+  subroutine Copy(a,b)
+    implicit none
+    class(PH),intent(out)::a
+    class(PH),intent(in )::b
+    !--------------------------------------------------
+    a%state = b%state
+    a%L     = b%L
+  endsubroutine
 
   subroutine Initialization(self)
     implicit none
@@ -153,6 +168,27 @@ contains
   endsubroutine
 
 
+  ! subroutine EndAppending(self)
+  !   implicit none
+  !   class(PH),intent(inout)::self
+  !   !--------------------------------
+  !   class(idata),pointer::p
+  !   integer::jc
+  !
+  !
+  !   call Allowed_S2(self)
+  !   self%state = 3
+  !   !-------------
+  !   do jc = 1 , self%L%getlen()
+  !      p => self%L%GetDataPointer(jc)
+  !      if (  (p%P(1).ge.0) .and. (p%P(2).ge.0) .and. (p%P(3).ge.0) )then
+  !      else
+  !        write(self%getprint(),*)"ERROR: Only positiv-connected primary cell need to be input."
+  !        write(self%getprint(),*)"Unknow part: i=",jc,"Pos:",p%p
+  !        stop
+  !      endif
+  !   enddo
+  ! endsubroutine
   subroutine EndAppending(self)
     implicit none
     class(PH),intent(inout)::self
@@ -160,12 +196,12 @@ contains
     class(idata),pointer::p
     integer::jc
 
-
     call Allowed_S2(self)
     self%state = 3
     !-------------
+    call self%L%SetMark(1)
     do jc = 1 , self%L%getlen()
-       p => self%L%GetDataPointer(jc)
+       p => self%L%GetMarkedPointerAndNext()
        if (  (p%P(1).ge.0) .and. (p%P(2).ge.0) .and. (p%P(3).ge.0) )then
        else
          write(self%getprint(),*)"ERROR: Only positiv-connected primary cell need to be input."
@@ -174,7 +210,6 @@ contains
        endif
     enddo
   endsubroutine
-
 
 
   subroutine Allowed_S2(self)
@@ -236,3 +271,101 @@ contains
 
 
 endmodule
+
+
+
+
+
+
+
+
+!
+!
+! #      Append all the Hamitonial terms in a primary cell.
+! #The format looks like:
+! #
+! #        (Append)
+! #         Disc                ! Character(32)
+! #         type                ! Character(16)
+! #         rp                  ! real*8
+! #         ip                  ! real*8
+! #         pos11 , pos12 , pos13  , par11 , par12 , par13
+! #         pos21 , pos22 , pos23  , par21 , par22 , par23
+! #         ...
+! # where:
+! # pos1,pos2,pos3  represent the position of Interaction
+! # par1mpar2,par3  represent the parameters of Hamitonian terms
+! #
+! #
+!
+!
+!
+! (Append)
+!  $t_c$
+!  Hopping
+!  1
+!  0
+!  1 , 0 , 0     ,  1 , 1 , 0
+!  0 , 1 , 0     ,  1 , 1 , 0
+!
+!
+!
+! (Append)
+!  $t_v$
+!  Hopping
+!  1
+!  0
+!  1 , 0 , 0     ,  2 , 2 , 0
+!  0 , 1 , 0     ,  2 , 2 , 0
+!
+!
+!
+! (Append)
+!  $D$
+!  DiffOnSite
+!  1
+!  0
+!  0 , 0 , 0     ,  1 , 2 , 0
+!
+!
+!
+! (Append)
+!  $U$
+!  OnSiteU
+!  10.4
+!  0
+!  0 , 0 , 0     ,  1 , 1 , 0
+!  0 , 0 , 0     ,  2 , 2 , 0
+!
+!
+! (Append)
+!  $V_1$
+!  InterV
+!  6
+!  0
+!  0 , 0 , 0     ,  1 , 2 , 0
+!
+!
+!
+! (Append)
+!  $J$
+!  Hund
+!  0
+!  0
+!  0 , 0 , 0     ,  1 , 2 , 0
+!
+! (Append)
+!  $I$
+!  PairHopping
+!  0
+!  0
+!  0 , 0 , 0     ,  1 , 2 , 0
+!
+!
+! (Append)
+!  $\mu$
+!  "OnSite"
+!  - (     )
+!  0
+!  0 , 0 , 0     ,  1 , 2 , 0
+!

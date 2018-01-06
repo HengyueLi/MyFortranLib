@@ -48,6 +48,10 @@
 !                   [fun] GetSpinSuppresedLocalHMatrix()
 !                         2ns 2ns matrix
 !
+!                   [fun] GetNearLCpos(i)
+!                         integer::i
+!                         return real*8::GetNearLCpos(3)  the position of near LC in real space.
+!
 !                   [fun] GetNearTMatix(i,spini,spinj)
 !                         return complex*16::M(ns,ns)
 !                         the i-th connected T   (exp part is not included)
@@ -121,6 +125,7 @@ module LaLatticeH
 
     procedure,pass::GetNearTMatix
     procedure,pass::GetNearTexpMatrix
+    procedure,pass::GetNearLCpos
     procedure,pass::GetNnearLC
     procedure,pass::SetValueByDiscription
     procedure,pass::GetLocalHMatix
@@ -149,6 +154,7 @@ module LaLatticeH
   private::GetVbasis
   private::GetSpinSuppresedTq
   private::GetSpinSuppresedLocalHMatrix
+  private::GetNearLCpos
 
 contains
 
@@ -223,9 +229,9 @@ contains
       do jcI = 1 , self%PrH%getlen()
         !----------------------------
         ! For one interacting
-        Inter = self%PrH%GetIdata(jci)
+        Inter = self%PrH%GetIdata(jci)                                      !;write(*,*)jcI;call inter%report(6)
         Call AppendOneInterFromPrimaryCellToLatticeCell(self,Inter,jcp)
-      enddo
+      enddo                                                                  !;stop
     enddo
     !--------------------------------
   endsubroutine
@@ -257,6 +263,14 @@ contains
       call self%LaC%GetDecomposeR(Rj,xj,bj)
       if (sum(abs(xj))==0)then
         !-----------------------------local term ---------------
+        !Even j is in LC, its index may be different from input
+        !  get PC id
+          Iin%P = Iin%P + self%LaC%GetPcPos(PCindex)
+          PCid  = self%LaC%GetPCidFromPos( Iin%P )
+          Iin%P = 0 ! reset
+        ! get site index in LC
+          Iin%para(2) = self%LaC%GetSiteIdFromPC(PCid,  inter%para(2)  )
+        !---append
         self%NHin = self%NHin + 1
         if ( self%NHin.gt.size(self%Hin) )then
           write(self%getprint(),*)"self%NHi is too small in LH";stop
@@ -307,8 +321,9 @@ contains
 
     do jc = 1 , NLChalf
        iNew = jc + NLChalf
-       self%LaPos(:,iNew) = - self%LaPos(:,jc)
-       self%NHou(iNew)    =   self%NHou(jc)
+       self%LaPos(:,iNew)  =  - self%LaPos(:,jc)
+       self%LaPosR(:,iNew) =  - self%LaPosR(:,jc)
+       self%NHou(iNew)     =    self%NHou(jc)
        do jc2 = 1 , self%NHou(jc)
           self%Hou(jc2,iNew) = self%Hou(jc2,jc)
           self%Hou(jc2,iNew)%para(1) = self%Hou(jc2,jc)%para(2)
@@ -498,6 +513,21 @@ contains
       !-------------------------------------
       call self%CheckInitiatedOrStop()
       GetNnearLC = self%NLC
+    endfunction
+
+    function GetNearLCpos(self,i) result(r)
+      implicit none
+      class(LH),intent(inout)  :: self
+      integer,intent(in)       :: i
+      real*8::r(3)
+      !---------------------------------
+      call self%CheckInitiatedOrStop()
+      if ( i>0 .and. i<= self%NLC )then
+        r = self%LaposR(:,i)
+      else
+        write(self%getprint(),*)"ERROR: input i should in range [1,self%NLC] where self%NLC=",self%NLC
+        write(self%getprint(),*)"Recently i=",i   ;stop
+      endif
     endfunction
 
 

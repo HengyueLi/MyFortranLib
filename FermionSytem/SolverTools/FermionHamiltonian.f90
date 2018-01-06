@@ -3,7 +3,7 @@
 ! NAME  : FermionHamiltonian
 ! OBJECT: TYPE(Ham)
 ! USED  : FermionOperators,functionalsubs,basic_math_functions
-! DATE  : 2017-12-24
+! DATE  : 2018-01-05
 ! AUTHOR: hengyueli@gmail.com
 !--------------
 ! Open-Source : No
@@ -25,6 +25,8 @@
 !          ┃    "OnSite"       ┃    i,i              ┃          onsite energy:   v *\sum_{spin} n_{i,spin}                           ┃
 !          ┣━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
 !          ┃  "GlobalOnSite"   ┃                     ┃   global onsite energy:   v *\sum_{(i=1,Np),spin} n_{i,spin}                  ┃
+!          ┣━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
+!          ┃  "DiffOnSite"     ┃    i, j             ┃ Set a different on two orbital: v * ( N_i - N_j ),N_i = \sum_spin n_{i,spin}  ┃
 !          ┣━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
 !          ┃ "SpinHopping"     ┃     i,j,spin        ┃ spin hopping: v * c^+_{i,spin}c_{j,spin} +h.c.                                ┃
 !          ┣━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
@@ -307,6 +309,8 @@ module FermionHamiltonian
               call App_OnSite(self,V,para(1))
             case("GLOBALONSITE") !----------------global Onsite---------------------------
               CALL App_GlobalOnSite(self,V)
+            case("DIFFONSITE")   !----------------set a gap  -----------------------------
+              call App_SetOrbitalGap(self,para(1),para(2),V)
             case("SPINHOPPING")  !----------------spin hopping ---------------------------
               call App_SpinHopping(self,V,para(1),para(2),para(3))
             case("HOPPING")      !---------------Hopping       ---------------------------
@@ -326,7 +330,7 @@ module FermionHamiltonian
             case("GENERALINTER2")!---------------GENERAL2 --------------------------------
               call App_GeneralInter2(self,V,para)
             case default
-              write(self%print,*)"ERROR: Unkonw interacting type:",trim(adjustl(Intype));stop
+              write(self%print,*)"ERROR: Unkonw interacting type in Ham:",trim(adjustl(Intype));stop
             endselect
             !--------------------------------------
          enddo
@@ -335,46 +339,74 @@ module FermionHamiltonian
          self%EigenId = f%get_random_int(0,2147483646)
        endsubroutine
 
-       subroutine AppendOPT(self,optid,para,V)
-         implicit none
-         class(Ham),intent(inout)::self
-         integer,intent(in)::optid , para(8)
-         complex*16,intent(in)::v
-         !------------------------------------------
-         class(odata),pointer::p
-         integer::jc,opara(8)
-         do jc = 1 , self%optl%GetLen()
-           p => self%optl%GetDataPointer(jc)
-            if (optid  .eq.  p%opt%get_optid()   )then
-              opara = p%opt%get_optid()
-              if ( CheckParaTheSame(opara, para)  )then
-                 p%v = p%v + v
-                 !p => null()
-                 goto 999
-              endif
-            endif
-         enddo
-         allocate(p)
-         call p%opt%Initialization(self%ns,optid,para,self%print)
-         p%v = v
-         call self%optl%append(p)
-   999   continue
-       endsubroutine
+  !      subroutine AppendOPT(self,optid,para,V)
+  !        implicit none
+  !        class(Ham),intent(inout)::self
+  !        integer,intent(in)::optid , para(8)
+  !        complex*16,intent(in)::v
+  !        !------------------------------------------
+  !        class(odata),pointer::p
+  !        integer::jc,opara(8)
+  !        do jc = 1 , self%optl%GetLen()
+  !           p => self%optl%GetDataPointer(jc)
+  !           if (optid  .eq.  p%opt%get_optid()   )then
+  !             opara = p%opt%get_para()
+  !             if ( CheckParaTheSame(opara, para)  )then
+  !                p%v = p%v + v
+  !                !p => null()
+  !                goto 999
+  !             endif
+  !           endif
+  !        enddo
+  !        allocate(p)
+  !        call p%opt%Initialization(self%ns,optid,para,self%print)
+  !        p%v = v
+  !        call self%optl%append(p)
+  !  999   continue
+  !      endsubroutine
+  subroutine AppendOPT(self,optid,para,V)
+    implicit none
+    class(Ham),intent(inout)::self
+    integer,intent(in)::optid , para(8)
+    complex*16,intent(in)::v
+    !------------------------------------------
+    class(odata),pointer::p
+    integer::jc,opara(8)
 
-      logical function CheckParaTheSame(para1,para2)
-         implicit none
-         integer,intent(in)::para1(8),para2(8)
-         !-------------------------------------
-         integer::jc
+    call self%optl%SetMark(1)
+    do jc = 1 , self%optl%GetLen()
+       p => self%optl%GetMarkedPointerAndNext()
+       if (optid  .eq.  p%opt%get_optid()   )then
+         opara = p%opt%get_para()
+         if ( CheckParaTheSame(opara, para)  )then
+            p%v = p%v + v
+            !p => null()
+            goto 999
+         endif
+       endif
+    enddo
+    allocate(p)
+    call p%opt%Initialization(self%ns,optid,para,self%print)
+    p%v = v
+    call self%optl%append(p)
+999   continue
+  endsubroutine
+    logical function CheckParaTheSame(para1,para2)
+       implicit none
+       integer,intent(in)::para1(8),para2(8)
+       !-------------------------------------
+       integer::jc
+       if (  sum(abs(para1-para2))==0  )then
          CheckParaTheSame = .true.
-         do jc = 1 ,8
-           if (para1(jc) .ne. para2(jc) )then
-              CheckParaTheSame = .false.
-              goto 999
-           endif
-         enddo
-    999 continue
-      endfunction
+       else
+         CheckParaTheSame = .false.
+       endif
+    endfunction
+
+
+
+
+
 
       subroutine App_SpinOnsite(self,V,i,spini)
         implicit none
@@ -407,6 +439,17 @@ module FermionHamiltonian
         do jc = 0 , self%ns - 1
           call App_OnSite(self,V,jc)
         enddo
+      endsubroutine
+
+
+      subroutine App_SetOrbitalGap(self,i,j,V)
+        implicit none
+        class(Ham),intent(inout)::self
+        integer,intent(in)::i,j
+        complex*16,intent(in)::V
+        !---------------------------------
+        call App_OnSite(self, V,i)
+        call App_OnSite(self,-V,j)
       endsubroutine
 
       subroutine App_SpinHopping(self,V,i,j,spin)

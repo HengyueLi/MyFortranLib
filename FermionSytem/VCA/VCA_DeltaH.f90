@@ -5,7 +5,7 @@
 ! NAME  : VCA_DeltaH
 ! OBJECT: TYPE(VCAdH)
 ! USED  : CodeObject,LatticeConfig,LaPrimaryH,functionalsubs,basic_math_functions,FermionHamiltonian
-! DATE  : 2017-12-28
+! DATE  : 2018-01-05
 ! AUTHOR: hengyueli@gmail.com
 !--------------
 ! Open-Source : No
@@ -14,7 +14,19 @@
 !            Saving VCA meanfiled.
 !
 ! STANDARD:
-!            *CALL Initialization( PrH,LaC,print_,show_ )
+!            *CALL Initialization(Lconf )
+!
+!
+!            subroutine AppendVariationalTerm(  Discription , type , jobr  )
+!
+!                   Type                    jobr
+!                 "DeltaAF"              B = jobr(1) ,Qm = jobr(2:4)
+!
+!                 "OrbitalCDW"           E = jobr(1) ,Qm = jobr(2:4)
+!                                        oi= jobi(1), oj = jobi(2)
+!
+!                 "OrbitalESDW"          E = jobr(1) ,Qm = jobr(2:4)
+!                                        oi= jobi(1), oj = jobi(2)
 !
 !
 ! USING LIST:
@@ -22,7 +34,7 @@
 !
 !
 ! avalable sets:
-!                   [sub] Initialization(Lconf)
+!                   [sub] Initialization(Lconf,print_,show_)
 !                         class(LaCon),target::Lconf
 !
 !                   [sub] StartAppending()
@@ -51,12 +63,53 @@
 !
 !                         Delta = E * sum_r Exp(i Qm * r ) * (-1)^spin * (  c^+_{r,oi} c_{r,oj} +h.c.  )
 !
+!
+!
+!
+!                   [sub] AppendVariationalTerm(  Discription ,  type  , jobi, jobr  )
+!                         character(32):: Discription
+!                         character(32):: type
+!                         integer      :: jobi(20)
+!                         real*8       :: jobr(20)
+!                         Details see STANDARD above.
+!
+!
 !                   [sub] SetValueByDiscription(discription,v)
 !                         character(DiscLen),intent(in)::discription   DiscLen=32?
-!                         complex*16,intent(in)::v
+!                         real*8,intent(in)::v
 !                         When this sub is called, EigenId will be changed.
 !
+!                   [sub] SetValueByIndex(i,v)
+!                         integer::i
+!                         real*8::v
+!
 ! avalable gets:
+!                   [fun] GetNumOfVarialtinalTerms()
+!                         number of total variational terms
+!
+!                   [fun] GetDisciption(i)
+!                         return discription character(32)
+!
+!                   [fun] GetValueByIndex(i)
+!                         integer::i
+!                         return real*8
+!
+!                   [fun] GetTotNbyHow(how)
+!                         character(3)::how
+!
+!                   [fun] GetTotN_Var_max()
+!
+!                   [fun] GetTotN_Var_min()
+!
+!                   [fun] GetHowId(how,i)
+!                         character(3)::how
+!                         integer::i
+!                         return the i-th how index
+!
+!                   [fun] GetValueByDiscription(discription)
+!                         return real*8
+!                         character(32)::discription
+!
 !                   [fun] GetDelatMatrix(spini,spinj)
 !                         complex*16::GetDelatMatrix(ns,ns)
 !
@@ -83,6 +136,7 @@ module VCA_DeltaH
   use LatticeConfig
   use CPTInterType
   use FermionHamiltonian ,only: Ham
+  use functionalsubs
   implicit none
 
   !----------------------------------
@@ -126,15 +180,25 @@ module VCA_DeltaH
    procedure,pass::AppendOrbitalESDW
    procedure,pass::GetDelatMatrix
    procedure,pass::SetValueByDiscription
+   procedure,pass::GetValueByDiscription
    procedure,pass::AppendDataToHam
    procedure,pass::GetDeltaMatrixSpinSupp
    procedure,pass::GetAlpha
+   procedure,pass::AppendVariationalTerm
+   procedure,pass::GetNumOfVarialtinalTerms
+   procedure,pass::GetDisciption
+   procedure,pass::GetValueByIndex
+   procedure,pass::GetTotN_Var_max
+   procedure,pass::GetTotN_Var_min
+   procedure,pass::GetTotNbyHow
+   procedure,pass::GetHowId
+   procedure,pass::SetValueByIndex
   endtype
 
   private::Initialization,StartAppending,EndAppending!,Append
   private::AppendDeltaAF,AppendOrbitalCDW,AppendOrbitalESDW
   private::GetDelatMatrix
-  private::SetValueByDiscription
+  private::SetValueByDiscription,GetValueByDiscription
   private::CheckNarOverflow,SetToUpperCase
   private::checkNmaxSamll,GetTotalIdataArray
   private::GetIdataArrayFromVarType
@@ -143,16 +207,26 @@ module VCA_DeltaH
   private::AppendDataToHam
   private::GetDeltaMatrixSpinSupp
   private::GetAlpha
-
+  private::AppendVariationalTerm
+  private::GetNumOfVarialtinalTerms
+  private::GetDisciption
+  private::GetValueByIndex
+  private::GetTotN_Var_max,GetTotN_Var_min,GetTotNbyHow
+  private::GetHowId
+  private::SetValueByIndex
 contains
 
 
-  subroutine Initialization(self,Lconf)
+
+  subroutine Initialization(self,Lconf,print_,show_)
     implicit none
     class(VCAdH),intent(inout)::self
     class(LaCon),target       ::Lconf
+    integer,intent(in),optional::print_,show_
     !---------------------------------------
     call self%SetInitiated(.True.)
+    if (present(print_)) Call self%setprint(print_)
+    if (present(show_ )) Call self%setshow(show_)
     self%Lconf => Lconf
     self%state = 1
     self%ns    = self%Lconf%GetNs()
@@ -244,7 +318,7 @@ contains
     self%var(self%Nvar)%v          = B
     self%var(self%Nvar)%rpara(1:3) = Qm
     self%var(self%Nvar)%how        = "MIN"
-    call SetToUpperCase(self,self%Nvar)
+    ! call SetToUpperCase(self,self%Nvar)
   endsubroutine
 
   Subroutine AppendOrbitalCDW(self,E,Qm,oi,oj,discription)
@@ -264,7 +338,7 @@ contains
     self%var(self%Nvar)%ipara(1)   = oi
     self%var(self%Nvar)%ipara(2)   = oj
     self%var(self%Nvar)%how        = "MIN"
-    call SetToUpperCase(self,self%Nvar)
+    ! call SetToUpperCase(self,self%Nvar)
   endsubroutine
 
 ! Append_Va_DeltaAF,Append_Va_OrbitalCDW,Append_Va_OrbitalESDW
@@ -287,7 +361,7 @@ subroutine AppendOrbitalESDW(self,E,Qm,oi,oj,discription)
   self%var(self%Nvar)%ipara(1)   = oi
   self%var(self%Nvar)%ipara(2)   = oj
   self%var(self%Nvar)%how        = "MIN"
-  call SetToUpperCase(self,self%Nvar)
+  ! call SetToUpperCase(self,self%Nvar)
 endsubroutine
 
 
@@ -381,6 +455,42 @@ SUBROUTINE GetIdataArrayFromVarType(self,Var ,idataarry,n)
 
 endsubroutine
 
+
+
+ subroutine AppendVariationalTerm(self,  Discription ,  type  , jobi, jobr  )
+   implicit none
+   class(VCAdH),intent(inout):: self
+   character(32),intent(in)::Discription
+   character(32),intent(in)::Type
+   integer,intent(in)::jobi(20)
+   real*8,intent(in) ::jobr(20)
+   !-----------------------------------
+   TYPE(funcsubs)::f
+   character(32)::upper
+   upper = f%get_string_upper(type)
+   select case(trim(adjustl(upper)))
+   case("DELTAAF" )
+     call self%AppendDeltaAF(jobr(1),jobr(2:4),discription)
+   case("ORBITALCDW")
+     CALL SELF%AppendOrbitalCDW(jobr(1),jobr(2:4),JOBI(1),JOBI(2),discription)
+   case("ORBITALESDW")
+     call self%AppendOrbitalESDW(jobr(1),jobr(2:4),JOBI(1),JOBI(2),discription)
+   case default
+     write(self%getprint(),*)"ERROR: Unknow variational type:",type;stop
+   endselect
+
+ endsubroutine
+
+
+
+
+
+
+
+
+
+
+
 ! check all saving VCA types.
 subroutine GetTotalIdataArray(self,idataarray,n)
   implicit none
@@ -448,7 +558,7 @@ endfunction
   integer function GetVarIdByDiscription(self,Disc)
     use functionalsubs
     implicit none
-    class(VCAdH),intent(inout)::self
+    class(VCAdH),intent(in)::self
     character(32),intent(in)::Disc
     !-----------------------------------------------
     TYPE(funcsubs)::f
@@ -492,6 +602,20 @@ endfunction
      endif
      self%var(jc)%v = rv
    endsubroutine
+
+   real*8 function GetValueByDiscription(self,Disc)
+     implicit none
+     class(VCAdH),intent(in)::self
+     character(32),intent(in)::Disc
+     !-----------------------------------------------
+     integer::jc
+     jc = GetVarIdByDiscription(self,Disc)
+     if (jc==-1)then
+       write(self%getprint(),*)"WARNNING: IN SetValueByDiscription, no matching Disciption is found.&
+                               Program Stop";stop
+     endif
+     GetValueByDiscription = self%var(jc)%v
+   endfunction
 
 
    function GetHamList(self) result(r)
@@ -539,9 +663,93 @@ endfunction
 
 
 
+   integer function GetNumOfVarialtinalTerms(self)
+     implicit none
+     class(VCAdH),intent(in)::self
+     !-------------------------------------------
+     Call self%CheckInitiatedOrStop()
+     GetNumOfVarialtinalTerms = self%Nvar
+   endfunction
+
+   character(32) function GetDisciption(self,i)
+     implicit none
+     class(VCAdH),intent(in)::self
+     integer,intent(in)::i
+     !-------------------------------------------
+     Call self%CheckInitiatedOrStop()
+     GetDisciption = self%Var(i)%disc
+   endfunction
+
+   real*8 function GetValueByIndex(self,i)
+     implicit none
+     class(VCAdH),intent(in)::self
+     integer,intent(in)::i
+     !-------------------------------------------
+     Call self%CheckInitiatedOrStop()
+     GetValueByIndex = self%Var(i)%v
+   endfunction
 
 
+   integer function GetTotNbyHow(self,how)
+     implicit none
+     class(VCAdH),intent(in)::self
+     character(3),intent(in)::How
+     !-------------------------------------------
+     character(3)::upper
+     integer::jc
+     TYPE(funcsubs)::f
+     upper = f%get_string_upper(how)
+     GetTotNbyHow = 0
+     do jc = 1 , self%Nvar
+        if (  self%Var(jc)%how ==upper  )  GetTotNbyHow = GetTotNbyHow + 1
+     enddo
+   endfunction
 
+   integer function GetTotN_Var_max(self)
+     implicit none
+     class(VCAdH),intent(in)::self
+     !-------------------------------------------
+     GetTotN_Var_max = GetTotNbyHow(self,"MAX")
+   endfunction
+
+   integer function GetTotN_Var_min(self)
+     implicit none
+     class(VCAdH),intent(in)::self
+     !-------------------------------------------
+     GetTotN_Var_min = GetTotNbyHow(self,"MIN")
+   endfunction
+
+   integer function GetHowId(self,howIN,i)
+     implicit none
+     class(VCAdH),intent(in)::self
+     character(3),intent(in)::howIN
+     integer,intent(in) :: i
+     !-------------------------------------------
+     TYPE(funcsubs)::f
+     character(3)::HOW
+     integer::jc ,c
+     HOW = F%get_string_upper(howIN)
+     c = 0
+     do jc = 1 , self%Nvar
+       if ( self%Var(jc)%how ==how) c = c + 1
+       if (c==i)then
+         GetHowId = jc
+         goto 999
+       endif
+     enddo
+     write(self%getprint(),*)"ERROR:GetHowId @ VCAdH. Check what is happend.";stop
+999 continue
+   endfunction
+
+
+   subroutine SetValueByIndex(self,i,v)
+     implicit none
+     class(VCAdH),intent(inout)::self
+     integer,intent(in) :: i
+     real*8,intent(in)::v
+     !-------------------------------------------
+     self%Var(i)%v = v
+   endsubroutine
 
 
 endmodule

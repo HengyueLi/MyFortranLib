@@ -6,7 +6,7 @@
 ! NAME  : VCA_WaldFun
 ! OBJECT: TYPE(waldf)
 ! USED  : CodeObject , LaLatticeH , VCA_DeltaH , CEsolver , CE_Green , CreateKspace , fermion_table , class_numerical_method
-! DATE  : 2018-01-02
+! DATE  : 2018-01-05
 ! AUTHOR: hengyueli@gmail.com
 !--------------
 ! Open-Source : No
@@ -263,6 +263,9 @@ contains
     integer,intent(in),optional      :: print_
     integer,intent(in),optional      :: show_
     !-------------------------------------------------------------
+    real*8 ::ba(3,3)
+    integer::kn(3)
+
     call Finalization(self)
     call self%SetInitiated(.true.)
     if (present(print_)) call self%SetPrint(print_)
@@ -282,8 +285,11 @@ contains
     self%temperature = SP%temperature
     self%ns          = ta%get_ns()
 
-    call self%k%Initialization( a = self%cptH%GetVbasis(),n=self%jobi(2:4),meshtype=1,&
-                                print_=self%getprint(),show_=self%getshow() )
+
+    ba = self%cptH%GetVbasis()
+    kn = self%jobi(2:4)
+    call self%k%Initialization( a = ba,n=kn,meshtype=1,&
+                                    print_=self%getprint(),show_=self%getshow() )
 
 
     call AllocateIntergrationPath(self)
@@ -360,7 +366,7 @@ contains
     type(CES)::solver
     TYPE(CEG)::G
     TYPE(Ham)::H
-    integer::ns,jc1,jc2                                     !,jc
+    integer::ns,jc1,jc2                                     !,jc,para(8),wtp
     complex*16::tempG(self%IntNomega,self%ns,self%ns)       !;class(FermOper),pointer::p
 
     ns = self%ta%get_ns()
@@ -375,12 +381,16 @@ contains
     call h%EndAppendingInteraction()
 
 
+
+    ! open(99,file="/home/hengyue/Desktop/eivca.dat")
+    ! wtp = 99
     ! do jc = 1 , H%GetOptN()
     !   p => h%GetOptact(jc)
-    !   write(*,*)jc,"/",H%GetOptN()
-    !   write(*,*)"optid=",p%get_optid()
-    !   write(*,*)"V=",H%GetOptV(jc)
-    !   write(*,*)"para=",p%get_para()
+    !   write(wtp,*)jc,"/",H%GetOptN()
+    !   write(wtp,*)"optid=",p%get_optid()
+    !   write(wtp,*)"V=",H%GetOptV(jc)
+    !   para = p%get_para()
+    !   write(wtp,*)"para=",para(1:6)
     !
     ! enddo   ;stop
 
@@ -428,28 +438,40 @@ contains
     integer,intent(in)::omegaid
     !------------------------------
     TYPE(nummethod)::f
-    integer::jck,i,j,jc
+    integer::jck ,jc , symm ,spin ,i1,i2
     complex*16::temp(self%ns*2,self%ns*2),Vk(self%ns*2,self%ns*2)
-    complex*16::G(self%ns*2,self%ns*2),Omegat(1),temp1
+    complex*16::G(self%ns*2,self%ns*2) ,temp1 ,TempS2(self%ns,self%ns)
     real*8::k(3),w
     !--------- initiate ------------
     FuncF = (0._8,0._8)
     !----------get G----------------
     G = self%SavedG(omegaid,:,:)
     !----------sum k---------------
-
+    symm = self%Ta%get_symmetry()
     do jck = 1 , self%k%getnk()
        k =  self%k%getk(jck)
        w =  self%k%getw(jck)
-  !
        temp = (0._8,0._8)
        do jc = 1 , self%ns * 2
          temp(jc,jc) = (1._8,0._8)
        enddo
-
        vk = GetVkMatrix(self,k, self%dh%GetAlpha()  )
        temp = temp - matmul( Vk , G )
-       temp1 = zlog( f%get_determinant_of_Matrix(self%ns*2,temp) )
+
+       !------------------------------------------------------------------------
+       ! if symmtry = 2 ,  there is no cross terms. The off diagonal terms =0
+       if (symm==2)then
+         temp1 = (0._8,0._8)
+         do spin = 0 , 1
+           i1 = spin * self%ns + 1  ; i2 = i1 + self%ns - 1
+           TempS2 = temp(i1:i2,i1:i2)
+           temp1 = temp1 + zlog( f%get_determinant_of_Matrix(self%ns,TempS2) )
+         enddo
+       else
+         temp1 = zlog( f%get_determinant_of_Matrix(self%ns*2,temp) )
+       endif
+       !------------------------------------------------------------------------
+
        FuncF = FuncF +  temp1 * w
      enddo
   endfunction
@@ -475,7 +497,7 @@ contains
     !--------------------------------------
     call self%CheckInitiatedOrStop()
     call GetSavingGandGrandPotetial(self)
-    GetLatticeOmegaPerSite = self%OmegaPri - GetI(self)
+    GetLatticeOmegaPerSite = self%OmegaPri - GetI(self)             !;write(*,*)self%OmegaPri, GetI(self),666
     GetLatticeOmegaPerSite = GetLatticeOmegaPerSite / self%ns
   endfunction
 

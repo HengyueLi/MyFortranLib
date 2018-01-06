@@ -22,7 +22,7 @@
 !
 !
 ! avalable sets:
-!                  [sub] Initialization(Vp,PC,PCi,Vl,PRINT_,show_)
+!                  [sub] Initialization(Vp,PC,PCi,Vl)
 !                        real*8 ::Vp(3,3)    the basis of the primary cell.
 !                        real*8 ::PC(3,Np)   Np is the number of sites in Primary cell. PC(3,i) is the position
 !                        integer::PCi(Np)    orbital index.          !1-basis

@@ -38,7 +38,7 @@
 !                  ![fun] i
 ! others      :
 !                  [sub] AppendDataToHam(H)
-!                        1-basis index will transfor to 0-basis index. 
+!                        1-basis index will transfor to 0-basis index.
 !                        for a input Type(Ham)::H, append all the interacting (type idata) into it.
 !                        H maybe contains some other terms already, but here it does not check that.
 !
@@ -69,11 +69,13 @@ module CPTInterType
   contains
     procedure,pass::SetIntoMatix
     procedure,pass::AppendToHam
+    procedure,pass::Report
   endtype
 
 
   private::SetIntoMatix
   private::AppendToHam
+  private::Report
 
 
 contains
@@ -105,6 +107,11 @@ contains
       if ( (spini==spinj)                              ) then
          Matrix(data%Para(1),data%Para(1)) = Matrix(data%Para(1),data%Para(1)) + data%v
       endif
+    case("DIFFONSITE")
+      if ( (spini==spinj)                              ) then
+         Matrix(data%Para(1),data%Para(1)) = Matrix(data%Para(1),data%Para(1)) + data%v
+         Matrix(data%Para(2),data%Para(2)) = Matrix(data%Para(2),data%Para(2)) - data%v
+      endif
     case("SPINHOPPING")             !   "SpinHopping"
       if ( (spini==spinj).and.  (spini==data%Para(3))  ) then
         Matrix(data%Para(1),data%Para(2)) = Matrix(data%Para(1),data%Para(2)) + data%v
@@ -128,10 +135,31 @@ contains
     class(idata),intent(inout) :: self
     class(Ham),intent(inout)::H
     !---------------------------------
-    Integer::para(8)
+    Integer::para(8)                                     !;integer,save::PP = 0
     para = self%Para
     para(1:2) = para(1:2) - 1
     call H%AppendingInteraction(  self%Itype  , Para , self%v)
+
+                                                            !  pp = pp + 1
+                                                            ! ;write(*,*)pp
+                                                            ! write(*,*)"type=",self%Itype
+                                                            ! write(*,*)"para=",para(1:6)
+                                                            ! write(*,*)"v=",self%v
+
+  endsubroutine
+
+
+  subroutine Report(self,wtp)
+    implicit none
+    class(idata),intent(inout) :: self
+    integer,intent(in)::wtp
+    !------------------------------------
+    write(wtp,*)"---------Show Details of idata-------------"
+    write(wtp,*)"discription        :",self%Disc
+    write(wtp,*)"InterationType     :",self%Itype
+    write(wtp,*)"Parameters         :",self%para(1:3)
+    write(wtp,*)"Valur              :",self%v
+    write(wtp,*)"Connected Position :",self%p
   endsubroutine
 
 

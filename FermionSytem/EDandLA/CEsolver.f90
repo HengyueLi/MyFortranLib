@@ -83,10 +83,10 @@ Module CEsolver
 
 
   type::SolverPara
-    character(2):: SvType = "NO"    ! = "ED" / "LA"
-    logical     :: IsReal = .false.
-
-    real*8      :: Temperature
+    character(2):: SvType      = "NO"    ! = "ED" / "LA"
+    logical     :: IsReal      = .false.
+    integer     :: symmetry    = 0
+    real*8      :: Temperature = 0
     !--------------------------
     ! ED use
     !
@@ -326,7 +326,7 @@ contains
     select case(self%Spara%SvType)
     case("ED")
       GetGrandPotential = self%ed%get_Eg() &
-                        - self%Spara%Temperature*dlog( self%ed%GetRz() )
+                        - self%Spara%Temperature*dlog( self%ed%GetRz() ) !;write(*,*)self%ed%get_Eg(),self%Spara%Temperature,self%ed%GetRz(),999;stop
     case("LA")
       GetGrandPotential = self%la%GetEg()
     endselect
