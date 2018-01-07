@@ -5,7 +5,7 @@
 ! NAME  :  LA_CE_G_PQ_unsave
 ! OBJECT:  TYPE(LAPQUSV)
 ! USED  :  LA_Subspace
-! DATE  :  2017-12-10
+! DATE  :  2018-01-07
 ! AUTHOR:  hengyueli@gmail.com
 !--------------
 ! Open-Source : No
@@ -184,7 +184,7 @@ contains
     real*8,allocatable::Hi(:,:),Ei(:)
     logical::IsReal
     !-------------------
-
+                                                                    !;write(*,*)"start"
     G = (0._8,0._8)
     Eg = self%LAsub%GetEg()
     Gd = self%LAsub%getD()
@@ -241,7 +241,7 @@ contains
     deallocate(am)
     !------------------------------------
     deallocate( Hi          ,Ei       )                                !;write(*,*)temp
-999 continue
+999 continue                                !;write(*,*)"here"
   endsubroutine
 
   SUBROUTINE GetG(self,Nomega,Omega,G)
@@ -253,7 +253,7 @@ contains
     !----------------------------------------------
     integer::jcde
     complex*16::dG(Nomega)
-    G = (0._8,0._8)
+    G = (0._8,0._8)                                          !;write(*,*)"start"
     if (self%initiated)then
       if (self%BSubId.ne.-1)then
           do jcde = 1 , self%LAsub%GetDe()
@@ -264,7 +264,7 @@ contains
       G = G / self%LAsub%GetDe()
     else
       write(self%print,*)"ERROR: Q method is used before Initialization";stop
-    endif
+    endif                                                        ! ;write(*,*)"here"
   endsubroutine
 
 

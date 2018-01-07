@@ -4,7 +4,7 @@
 ! NAME  : VCA_Variation
 ! OBJECT: TYPE(VCAva)
 ! USED  : CodeObject , VCA_DeltaH , VCA_WaldFun , Msearchsaddle , functionalsubs
-! DATE  : 2017-12-30
+! DATE  : 2018-01-07
 ! AUTHOR: hengyueli@gmail.com
 !--------------
 ! Open-Source : No
@@ -13,6 +13,49 @@
 !            Use some nummerical method to search the stationary point of the system.
 !            We follow the cross over method.
 !              https://arxiv.org/abs/0806.0266 "Correlated band structure of NiO, CoO,..."
+!
+!           CM folw:
+!           -----------
+!           definition :   A = \alpha  ,
+!
+!           input: dA0 , Am
+!
+!                         ┌─────────────────┐
+!                         │initiate: A0 = 0 │
+!                         └────────┬────────┘
+!                                  ↓
+!                           ┌──────┴───────┐
+!                           │  dA = dA0    │
+!                           └──────┬───────┘
+!            ┌────────────────────→↓ ←────────────────────────┐
+!            │              ┌──────┴───────┐                  │
+!            │              │ A = A0 + dA  │                  │
+!            │              └──────┬───────┘                  │
+!            │                     ↓                          │
+!            │                ┌────┴──────┐                   │
+!            │                │Last = A>=1│                   │
+!            │                │ if Last ? │                   │
+!            │                └─┬─────┬───┘                   │
+!            │               yes↓     ↓No                     │
+!            │                ┌─┴─┐   │                       │
+!            │                │A=1│   │                       │
+!            │                └─┬─┘   │                       │
+!            │                  ↓     ↓                       ↑
+!            │          ┌───────┴─────┴────────┐              │
+!            │          │ backup dH            │              │
+!            │          │ Searching successful?│              │
+!            ↑          └──────┬─────────────┬─┘              │
+!            │             yes ↓             ↓ No┌───────────┐│
+!            │          ┌──────┴────┐        └───┤Recover dH ││
+!            │          │ if Last ? │            │Reduce  dA ││
+!            │          └──┬─────┬──┘ yes        └──────────┬┘│
+!            │          NO ↓     └────→─────┐           ┌───┴─┴┐
+!            │          ┌──┴───────┐     ┏━━┷━━━━━━━━━┓ │dA<Am?│
+!            │          │A0=A      │     ┃out,ierr = 0┃ └┬─────┘
+!            │          │Recover dA│     ┗━━━━━━━━━━━━┛  ↓yes
+!            │          └─┬────────┘                  ┏━━┷━━━━━━━━━┓
+!            └────────────┘                           ┃out,ierr = 1┃
+!                                                     ┗━━━━━━━━━━━━┛
 !
 ! STANDARD:
 !            *CALL Initialization( )
@@ -30,6 +73,14 @@
 !                          real*8            ,intent(in)           :: jobr(:)
 !                          integer           ,intent(in) ,optional :: print_,show_
 !
+!                            deltaX= jobr(1)
+!                            prX   = jobr(2)
+!                            prY   = jobr(3)
+!                            prG   = jobr(4)
+!                            PRE   = jobr(5)
+!
+!                           dAlpha = jobr(6)    ! step of alpha
+!                           Alpham = jobr(7)    ! tolarence of small alpha
 !
 ! avalable gets:
 !                   [fun] G
@@ -37,7 +88,17 @@
 ! avalable is :
 !                  ![fun] i
 ! others      :
-!                  ![sub] T
+!                  [fun] OptimisePhasePoint()
+!                        Start from recent dH, searching a new stationary point dH'.
+!                        The value of dH is changed.
+!                        return error code.
+!
+!                  [fun] CrossOverSearching(ResetDH)
+!                        logical::ResetDH
+!                        if ResetDH : dH will be set to zero first. If not, dH will be kept.
+!                        Using CM method to find the stationary point.
+!                        return the error code.
+!
 !
 !
 !!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -84,15 +145,20 @@ module VCA_Variation
     real*8 ::jobr(NmaxJob)
   contains
     procedure,pass::Initialization
+    procedure,pass::OptimisePhasePoint
+    procedure,pass::CrossOverSearching
   endtype
 
 
   private::Initialization
+  private::OptimisePhasePoint
+  private::CrossOverSearching
 
 
 
+  !!@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+  !!  Override part
   private::OverrideFun,OverrideIsRational,OverrideSet,OverrideGet
-
 contains
 
 !!@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
@@ -152,6 +218,7 @@ subroutine OverrideSet(self,swith,xmax,xmin) ! swith = "min"/"max"
 end subroutine
 
 
+
 subroutine OverrideGet(self,swith,xmax,xmin) ! swith = "min"/"max"
         implicit none
         class(Vca_saddle),intent(inout)::self
@@ -179,16 +246,6 @@ end subroutine
 
 
 !!@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -233,15 +290,104 @@ end subroutine
                   prG   = self%jobr(4),&
                   PRE   = self%jobr(5)             )
 
-
   endsubroutine
 
-  subroutine CrossOverMethod(self)
+
+   integer function OptimisePhasePoint(self)
+     implicit none
+     class(VCAva),intent(inout):: self
+     !---------------------------------
+     call self%sd%Searching()
+     OptimisePhasePoint = self%sd%get_ierror()
+  endfunction
+
+
+
+
+
+  integer function CrossOverSearching(self,resetdh)
     implicit none
     class(VCAva),intent(inout)  :: self
+    logical,intent(in)::resetdh
     !-------------------------------------
+    real*8::A0,A,dA,Am
+    logical::last
+    integer::ierro
 
+    if (resetdh ) call self%dH%ReSetToZero()
+
+    A0 = 0._8   ;  dA = self%jobr(6)   ; Am =  self%jobr(7)
+
+100 continue
+
+    A = A0 + dA
+
+    last = A>=1._8
+
+    if (last) A = 1._8
+
+
+    Call self%dH%BackUp()
+    call self%dH%setalpha(A)
+    ierro = OptimisePhasePoint(self)
+    !-----------------
+
+    if ( ierro ==0 ) then
+      ! variation is successful!
+      write(self%getprint(),*)"  Stationary point have been found successfully!."
+      !  report stationary point
+      Call self%dH%report(self%getprint())
+      if (last) then
+        CrossOverSearching = 0
+        goto 999
+      else
+        A0 = A
+        Call RecoverDA(dA,self%jobr(6))
+        goto 100
+      endif
+    else
+      write(self%getprint(),*)"=================================================="
+      write(self%getprint(),*)"Step maybe too large,change it from",dA
+      !------------------------------
+      call self%dH%Recover()
+      call ReduceDA(dA,self%jobr(6))
+      !------------------------------
+      write(self%getprint(),*)"to ",dA
+      write(self%getprint(),*)"=================================================="
+
+
+
+      if (dA <= Am)then
+        CrossOverSearching = 1
+        goto 999
+      endif
+
+      goto 100
+
+    endif
+
+
+999 continue
+
+contains
+  subroutine ReduceDA(dA,dA0)
+    implicit none
+    real*8,intent(inout)::dA
+    real*8,intent(in)   ::dA0
+    !-------------------------
+    dA = dA / 2
   endsubroutine
+
+  subroutine RecoverDA(dA,dA0)
+    implicit none
+    real*8,intent(inout)::dA
+    real*8,intent(in)   ::dA0
+    !-------------------------
+    dA = dA0
+  endsubroutine
+
+  endfunction
+
 
 !call self%sd%self%Searching()
 

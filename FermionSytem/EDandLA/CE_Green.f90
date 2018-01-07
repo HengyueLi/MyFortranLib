@@ -5,7 +5,7 @@
 ! NAME  :  CE_Green
 ! OBJECT:  TYPE(CEG)
 ! USED  :  CEsolver,CodeObject,LA_GCE_G_Unsave,ED_GCE_G
-! DATE  :  2017-12-29
+! DATE  :  2018-01-07
 ! AUTHOR:  hengyueli@gmail.com
 !--------------
 ! Open-Source : No

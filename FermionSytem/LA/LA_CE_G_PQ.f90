@@ -319,7 +319,7 @@ module LA_CE_G_PQ
      !---------------------------------------
      integer::jcDe,JCO,jcm,jci,jcj
      complex*16::QdQ(self%Ni,self%Ni),Am(self%CutM)
-     G = (0._8,0._8)
+     G = (0._8,0._8)                                      !;write(*,*)"start"
      !---
      do jcDe = 1 , self%De
         do jci = 1 , self%ni ; do jcj = 1 , self%ni
@@ -336,7 +336,7 @@ module LA_CE_G_PQ
        enddo
      endif
 
-     G = G / self%De
+     G = G / self%De                                           !;write(*,*)"here"
 
    endsubroutine
 

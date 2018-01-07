@@ -92,7 +92,7 @@ Module CEsolver
     !
     !--------------------------
     !  Lanczos use
-    real*8  :: pre      = 1.e-14
+    real*8  :: pre      = 1.e-13
     real*8  :: bzero    = 0.000001
     integer :: M        = 30
     logical :: oth      = .true.

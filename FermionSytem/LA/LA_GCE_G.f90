@@ -6,7 +6,7 @@
 ! NAME  :  LA_GCE_G
 ! OBJECT:  TYPE(LAGCEG)
 ! USED  :  LA_CE_G,LA_GCESpace
-! DATE  :  2017-12-08
+! DATE  :  2018-01-07
 ! AUTHOR:  hengyueli@gmail.com
 !--------------
 ! Open-Source : No

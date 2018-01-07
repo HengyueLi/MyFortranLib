@@ -6,7 +6,7 @@
 ! NAME  : VCA_WaldFun
 ! OBJECT: TYPE(waldf)
 ! USED  : CodeObject , LaLatticeH , VCA_DeltaH , CEsolver , CE_Green , CreateKspace , fermion_table , class_numerical_method
-! DATE  : 2018-01-05
+! DATE  : 2018-01-07
 ! AUTHOR: hengyueli@gmail.com
 !--------------
 ! Open-Source : No
@@ -229,11 +229,12 @@ module VCA_WaldFun
     integer:: IntNomega
     complex*16,allocatable:: IntOmega(:)
     complex*16,allocatable:: IntOmegaWeight(:)
-
+    !------------------------------------------
     integer::ns
     complex*16,allocatable :: SavedG(:,:,:)     ! G( Nomega , 2NS , 2NS   )
     real*8                 :: OmegaPri
     TYPE(Kspace)::k
+    !-----------------------------------------
 
   contains
     procedure,pass::Initialization
@@ -247,6 +248,7 @@ module VCA_WaldFun
   private::AllocateIntergrationPath,AllocateIntergrationPath_method2
   private::GetSavingGandGrandPotetial
   private::FuncF,GetVkMatrix,GetI,GetLatticeOmegaPerSite
+  private::ReccorectI
 
 contains
 
@@ -343,11 +345,12 @@ contains
 
 
     self%IntNomega = sum(self%jobi(5:6))  * 2
-    allocate(  self%IntOmega(self%IntNomega)                                     )
-    allocate(  self%IntOmegaWeight(self%IntNomega)                               )
-    allocate(  self%SavedG(self%IntNomega,self%ta%get_ns()*2,self%ta%get_ns()*2) )
+    allocate(  self%IntOmega(-1:self%IntNomega)                                     )
+    allocate(  self%IntOmegaWeight(-1:self%IntNomega)                               )
+    allocate(  self%SavedG(-1:self%IntNomega,self%ta%get_ns()*2,self%ta%get_ns()*2) )
 
-    call VcAW%GetOmegaWeigth(self%IntOmega,self%IntOmegaWeight)
+    call VcAW%GetOmegaWeigth(self%IntOmega(1:self%IntNomega),&
+                                          self%IntOmegaWeight(1:self%IntNomega) )
 
      !------------------------
      ! absorb f(omega) into weight
@@ -355,6 +358,10 @@ contains
         self%IntOmegaWeight(jc2) = (0._8,1._8)/2._8/pi*self%IntOmegaWeight(jc2) &
                         * f%FermionFunc(self%IntOmega(jc2),self%temperature)
      enddo
+
+     !----------------
+     self%IntOmega(-1) =  0.0002 *  (1.0_8,1._8)/dsqrt(2.0_8)
+     self%IntOmega( 0) =  0.0001 *  (1.0_8,1._8)/dsqrt(2.0_8)
   endsubroutine
 
 
@@ -366,12 +373,18 @@ contains
     type(CES)::solver
     TYPE(CEG)::G
     TYPE(Ham)::H
-    integer::ns,jc1,jc2                                     !,jc,para(8),wtp
-    complex*16::tempG(self%IntNomega,self%ns,self%ns)       !;class(FermOper),pointer::p
+    integer::ns,jc1,jc2 ,NOmegaG  ,bg1,bg2                              !,jc,para(8),wtp
+    ! complex*16::tempG(size(self%SavedG(:,1,1)),self%ns,self%ns)       !;class(FermOper),pointer::p
+    complex*16,allocatable::tempG(:,:,:)
+
+    bg1 = LBOUND(self%SavedG,1)
+    bg2 = UBOUND(self%SavedG,1)
+    NOmegaG = bg2 - bg1 + 1
+
+    allocate(tempG(bg1:bg2,self%ns,self%ns))
+
 
     ns = self%ta%get_ns()
-
-
     !----------------------------------------------
     !  get H
     call H%Initialization(ns,self%getprint())
@@ -380,42 +393,28 @@ contains
     Call self%dH%AppendDataToHam(H)
     call h%EndAppendingInteraction()
 
-
-
-    ! open(99,file="/home/hengyue/Desktop/eivca.dat")
-    ! wtp = 99
-    ! do jc = 1 , H%GetOptN()
-    !   p => h%GetOptact(jc)
-    !   write(wtp,*)jc,"/",H%GetOptN()
-    !   write(wtp,*)"optid=",p%get_optid()
-    !   write(wtp,*)"V=",H%GetOptV(jc)
-    !   para = p%get_para()
-    !   write(wtp,*)"para=",para(1:6)
-    !
-    ! enddo   ;stop
-
-
     !-----------------------------------------------
 
-    Call solver%Initialization( self%SP , self%Ta, H , self%getprint() , self%getshow() )
+    Call solver%Initialization( self%SP , self%Ta, H , self%getprint() , show_ = 0)
     Call solver%SynchronizeWithHamiltonian()
 
     self%OmegaPri = solver%GetGrandPotential()
 
 
-    Call G%Initialization(solver,self%Gp,self%getprint() , self%getshow()+1)
+    Call G%Initialization(solver,self%Gp,self%getprint() , show_ = 0)
 
-    call G%GetGreenMatrix(spini=0,spinj=0,NOmega=self%IntNomega,Omega=self%IntOmega&
+    call G%GetGreenMatrix(spini=0,spinj=0,NOmega=NOmegaG,Omega=self%IntOmega(bg1:bg2)&
                     , GM=tempG)     ;  self%SavedG(:,1:ns,1:ns) = tempG
-    call G%GetGreenMatrix(spini=1,spinj=1,NOmega=self%IntNomega,Omega=self%IntOmega&
+    call G%GetGreenMatrix(spini=1,spinj=1,NOmega=NOmegaG,Omega=self%IntOmega(bg1:bg2)&
                     , GM=tempG)     ;  self%SavedG(:,ns+1:2*ns,ns+1:2*ns)= tempG
-    call G%GetGreenMatrix(spini=0,spinj=1,NOmega=self%IntNomega,Omega=self%IntOmega&
+    call G%GetGreenMatrix(spini=0,spinj=1,NOmega=NOmegaG,Omega=self%IntOmega(bg1:bg2)&
                     , GM=tempG)     ;  self%SavedG(:,1:ns,ns+1:2*ns)  = tempG
 
-    forall(jc1=1:self%IntNomega)
+    forall(jc1=bg1:bg2)
        self%SavedG(jc1,ns+1:2*ns,1:ns) = transpose( conjg( self%SavedG(jc1,1:ns,ns+1:2*ns) ) )
     endforall
 
+   deallocate(tempG)
   endsubroutine
 
   ! V(2ns,2ns)
@@ -430,22 +429,21 @@ contains
   endfunction
 
 
-
   ! F = \sum_k \ln\det[1-V_{k\Delta}G']
-  complex*16 function FuncF(self,omegaid)
+  complex*16 function FuncF(self,Gpri)
     IMPLICIT NONE
     class(waldf),intent(inout)  :: self
-    integer,intent(in)::omegaid
+    complex*16,intent(in)::Gpri(self%ns*2,self%ns*2)
     !------------------------------
     TYPE(nummethod)::f
     integer::jck ,jc , symm ,spin ,i1,i2
     complex*16::temp(self%ns*2,self%ns*2),Vk(self%ns*2,self%ns*2)
-    complex*16::G(self%ns*2,self%ns*2) ,temp1 ,TempS2(self%ns,self%ns)
+    complex*16::temp1 ,TempS2(self%ns,self%ns)
     real*8::k(3),w
     !--------- initiate ------------
     FuncF = (0._8,0._8)
     !----------get G----------------
-    G = self%SavedG(omegaid,:,:)
+
     !----------sum k---------------
     symm = self%Ta%get_symmetry()
     do jck = 1 , self%k%getnk()
@@ -456,8 +454,7 @@ contains
          temp(jc,jc) = (1._8,0._8)
        enddo
        vk = GetVkMatrix(self,k, self%dh%GetAlpha()  )
-       temp = temp - matmul( Vk , G )
-
+       temp = temp - matmul( Vk , Gpri )
        !------------------------------------------------------------------------
        ! if symmtry = 2 ,  there is no cross terms. The off diagonal terms =0
        if (symm==2)then
@@ -476,6 +473,28 @@ contains
      enddo
   endfunction
 
+  real*8 function ReccorectI(self)
+    IMPLICIT NONE
+    class(waldf),intent(inout)  :: self
+    !--------------------------------------
+    real*8,parameter::pi = 3.141592653589793238462643383279_8
+    real*8::y1,y2,x1,x2
+    complex*16::Gtemp(  size(self%SavedG(1,:,1))  , size(self%SavedG(1,1,:))    )
+
+    ReccorectI = 0._8
+    select case(self%jobi(1))
+    case(2)
+       x1 = abs(self%IntOmega(-1))
+       x2 = abs(self%IntOmega( 0))
+       Gtemp = self%SavedG(-1,:,:)
+       y1 = real(FuncF(self,Gtemp) * self%IntOmega(-1))
+       Gtemp = self%SavedG( 0,:,:)
+       y2 = real(FuncF(self,Gtemp) * self%IntOmega( 0))
+       ReccorectI = (x1*y2-y1*x2)/(x1-x2)
+       ReccorectI = ReccorectI / 4  !  degree = 90.   ->  d/2Pi
+       ReccorectI = ReccorectI * 2 ! upper and lower plane
+    endselect                                  ! ;WRITE(*,*)ReccorectI
+  endfunction
 
   real*8 function GetI(self)
     IMPLICIT NONE
@@ -483,12 +502,14 @@ contains
     !--------------------------------------
     integer::jc
     complex*16::ret
+    complex*16::Gtemp(  size(self%SavedG(1,:,1))  , size(self%SavedG(1,1,:))    )
 
     ret = (0._8,0._8)
     do jc = 1 , self%IntNOmega
-       ret = ret + FuncF(self,jc) * self%IntOmegaWeight(jc)
+       Gtemp = self%SavedG(jc,:,:)
+       ret = ret + FuncF(self,Gtemp ) * self%IntOmegaWeight(jc)
     enddo
-    GetI = 2._8 * real(ret)
+    GetI = 2._8 * real(ret)  + ReccorectI(self)
   endfunction
 
   real*8 function GetLatticeOmegaPerSite(self)
@@ -497,7 +518,7 @@ contains
     !--------------------------------------
     call self%CheckInitiatedOrStop()
     call GetSavingGandGrandPotetial(self)
-    GetLatticeOmegaPerSite = self%OmegaPri - GetI(self)             !;write(*,*)self%OmegaPri, GetI(self),666
+    GetLatticeOmegaPerSite = self%OmegaPri - GetI(self)            ! ;write(*,*)self%OmegaPri, GetI(self),666
     GetLatticeOmegaPerSite = GetLatticeOmegaPerSite / self%ns
   endfunction
 

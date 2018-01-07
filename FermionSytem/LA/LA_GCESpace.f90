@@ -4,7 +4,7 @@
 ! NAME  :  LA_GCESpace
 ! OBJECT:  TYPE(LA_GCE)
 ! USED  :  LA_Subspace,basic_math_functions
-! DATE  :  2017-12-05
+! DATE  :  2018-01-07
 ! AUTHOR:  hengyueli@gmail.com
 !--------------
 ! Open-Source : No
@@ -223,12 +223,12 @@ contains
     class(LA_GCE),intent(inout)::self
     !----------------------------------------------
     integer::jc,con
-    real*8::Eg=Huge(Eg)
+    real*8::Eg
     TYPE(bmathf)::f
     class(data),pointer::p
 
     if (self%EigenId == self%H%GetEigenId()) goto 999
-
+    Eg=Huge(Eg)
     !--------------------------------------------------
     ! diagonalization
     self%EigenId = self%H%GetEigenId()
@@ -270,7 +270,7 @@ contains
     implicit none
     class(LA_GCE),intent(inout)::self
     !----------------------------------------------
-    GetDe = self%de
+    GetDe = self%de                                !;write(*,*)self%de ,self%nsub
   endfunction
 
   real*8 function GetEg(self)

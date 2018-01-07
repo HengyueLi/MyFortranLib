@@ -5,7 +5,7 @@
 ! NAME  : LA_Subspace
 ! OBJECT: TYPE(LASubSpace)
 ! USED  : fermion_table,FermionHamiltonian,basic_math_functions
-! DATE  : 2017-12-03
+! DATE  : 2018-01-07
 ! AUTHOR: hengyueli@gmail.com
 !--------------
 ! Open-Source : No
@@ -748,7 +748,7 @@ module LA_Subspace
           goto 200
         endif
 
-        if (   CheckDiffSmall(s%e,self%EG,self%DegPre)  )then
+        if (   CheckDiffSmall(self,s%e,self%EG,self%DegPre)  )then
           call self%state%append(s)
         else
           deallocate(s)
@@ -768,13 +768,17 @@ module LA_Subspace
       self%EigenId = self%H%GetEigenId()
     endsubroutine
 
-    logical function CheckDiffSmall(E1,E2,rePre)
+    logical function CheckDiffSmall(self,E1,E2,rePre)
       use basic_math_functions
       implicit none
+      class(LASubSpace),intent(inout)::self
       real*8,intent(in)::E1,E2,rePre
       !----------------------------------------
+      real*8::r1,r2
       TYPE(bmathf)::f
-      CheckDiffSmall = f%IsTwoValuePercentageTheSame(E1,E2,rePre)
+      r1 = e1 ;if (abs(r1)<=self%LanPre) r1 = 0._8
+      r2 = e2 ;if (abs(r2)<=self%LanPre) r2 = 0._8
+      CheckDiffSmall = f%IsTwoValuePercentageTheSame(r1,r2,rePre)
     endfunction
 
 

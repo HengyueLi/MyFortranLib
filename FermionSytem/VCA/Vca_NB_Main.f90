@@ -45,7 +45,7 @@
 !
 !
 ! avalable sets:
-!                   [sub] Initialization( )
+!                   [sub] Initialization( print_,show_ )
 !
 ! avalable gets:
 !                   [fun] G
@@ -76,6 +76,11 @@
 !                         real*8,intent(in) ::R
 !                         integer,intent(in)::N
 !
+!                   [fun] CMsearching(ResetDH)
+!                         logical::ResetDH
+!                         integer::CMsearching    return the error code of searching process.
+!                         if (ResetDH) : before CM, reset all parameters in dH to 0.
+!
 !
 !
 !!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -96,7 +101,7 @@ module VCA_NB_MAIN
 
 
   type,extends(object)::VCANB
-    private
+    ! private
     !-----------------------------
     ! solver parameters : this should be fixed for all calculation
       type(SolverPara) :: EDPA
@@ -127,6 +132,7 @@ module VCA_NB_MAIN
 
     procedure,pass::TestVariational
     procedure,pass::TestAllVariational
+    procedure,pass::CMsearching
 
 
    !!&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
@@ -140,14 +146,21 @@ module VCA_NB_MAIN
   endtype
 
   private::Initialization
+
+
+  private::TestVariational,TestAllVariational
+  private::CMsearching
+
+
+
+  !!&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+  ! override part
   private::SetEDPara
   private::SetPrimaryCellHamiltonian
   private::SetLatticeConfiguration
   private::SetDeltaMatrix
   private::SetWaldPara
   private::SetVariationalPara
-  private::TestVariational,TestAllVariational
-
 contains
 
   subroutine Initialization(self,print_,show_)
@@ -276,6 +289,15 @@ contains
        call TestVariational(self,filename,disc,mode,rmode,R,N)
     enddo
   endsubroutine
+
+
+  integer function CMsearching(self,ResetDH)
+    implicit none
+    class(VCANB),intent(inout)::self
+    logical,intent(in)::ResetDH
+    !-----------------------------------
+    CMsearching = self%vari%CrossOverSearching(ResetDH)
+  endfunction
 
 
 

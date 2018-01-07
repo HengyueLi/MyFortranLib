@@ -5,7 +5,7 @@
 ! NAME  :  LA_GCE_G_Unsave
 ! OBJECT:  TYPE(LAGCEGUSV)
 ! USED  :  LA_CE_G_unsave,LA_GCESpace
-! DATE  :  2017-12-10
+! DATE  :  2018-01-07
 ! AUTHOR:  hengyueli@gmail.com
 !--------------
 ! Open-Source : No
@@ -148,13 +148,13 @@ contains
     !-------------------------------------------------
     integer::jc,sid
     complex*16::dG(Nomega)
-    G = (0._8,0._8)
+    G = (0._8,0._8)                                 !;write(*,*)"start"
     do jc = 1 , self%FullLa%GetNsubGS()
        sid = self%FullLa%GetSubIdGs(jc)
        call self%subG(sid)%getG(Nomega,Omega,dG)
        G = G + dG * self%FullLa%GetSubDe(sid)
-    enddo
-    G = G / self%FullLa%GetDe()
+    enddo                                       !;write(*,*)sum(G),self%FullLa%GetDe()
+    G = G / self%FullLa%GetDe()                    ! ;write(*,*)"here"
   endsubroutine
 
 

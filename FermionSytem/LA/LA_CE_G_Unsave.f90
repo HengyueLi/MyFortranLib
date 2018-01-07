@@ -5,7 +5,7 @@
 ! NAME  :  LA_CE_G_unsave
 ! OBJECT:  TYPE(LACEGUSV)
 ! USED  :  LA_Subspace,LA_CE_G_PQ_unsave
-! DATE  :  2017-12-10
+! DATE  :  2018-01-07
 ! AUTHOR:  hengyueli@gmail.com
 !--------------
 ! Open-Source : No
@@ -181,10 +181,10 @@ contains
     complex*16::Gp(Nomega)
 
 
-    call self%p%getg(Nomega,Omega,Gp)
+    call self%p%getg(Nomega,Omega,Gp)   ! ;write(*,*)Gp(1),"Gp"
     call self%q%getg(Nomega,Omega,G )
-
-    G = Gp + G
+                                      !  ;write(*,*)G(1),"G"
+    G = Gp + G                        !  ;write(*,*)G(1),"G+GP"
   endsubroutine
 
 

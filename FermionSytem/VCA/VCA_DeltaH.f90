@@ -83,6 +83,9 @@
 !                         integer::i
 !                         real*8::v
 !
+!                   [sub] SetAlpha(alpha)
+!                         real*8::alpha
+!
 ! avalable gets:
 !                   [fun] GetNumOfVarialtinalTerms()
 !                         number of total variational terms
@@ -123,6 +126,19 @@
 !                  [sub] AppendDataToHam(H)
 !                        for a input Type(Ham)::H, append all the interacting (type idata) into it.
 !                        H maybe contains some other terms already, but here it does not check that.
+!
+!                  [sub] report(wtp)
+!                        integer::wtp
+!                        report value of dH
+!
+!                  [sub] BackUp()
+!                        there is a inner space can be used to save one backup point.
+!
+!                  [sub] Recover()
+!                        Recover the backup point.
+!
+!                  [sub] ReSetToZero()
+!                        reset all dH parameter value to 0.
 !
 !
 !
@@ -165,11 +181,16 @@ module VCA_DeltaH
     integer::state
     class(LaCon),pointer :: Lconf => null()    ! lattice configruatioin
 
+    !-------alpha---------------
+    real*8     :: alpha = 1._8
+
     !--------------------------------
     integer    :: Nvar
     type(Vterm):: Var(NVmax)
-    real*8     :: alpha = 1._8
     !---------------------------------
+    ! back up use
+    integer    :: Nbackup
+    type(Vterm):: VarBackup(NVmax)
   contains
    procedure,pass::Initialization
    procedure,pass::StartAppending
@@ -193,6 +214,11 @@ module VCA_DeltaH
    procedure,pass::GetTotNbyHow
    procedure,pass::GetHowId
    procedure,pass::SetValueByIndex
+   procedure,pass::report
+   procedure,pass::BackUp
+   procedure,pass::Recover
+   procedure,pass::ReSetToZero
+   procedure,pass::SetAlpha
   endtype
 
   private::Initialization,StartAppending,EndAppending!,Append
@@ -214,7 +240,13 @@ module VCA_DeltaH
   private::GetTotN_Var_max,GetTotN_Var_min,GetTotNbyHow
   private::GetHowId
   private::SetValueByIndex
+  private::report
+  private::BackUp,Recover
+  private::ReSetToZero
+  private::SetAlpha
 contains
+
+
 
 
 
@@ -253,6 +285,15 @@ contains
       write(self%getprint(),*)"ERROR: StartAppending is not called while trying to call EndAppending"
       stop
     endif
+  endsubroutine
+
+
+  subroutine SetAlpha(self,alpha)
+    implicit none
+    class(VCAdH),intent(inout)::self
+    real*8,intent(in)::alpha
+    !---------------------------------------
+    self%alpha = alpha
   endsubroutine
 
   ! subroutine Append(self,data)
@@ -749,6 +790,59 @@ endfunction
      real*8,intent(in)::v
      !-------------------------------------------
      self%Var(i)%v = v
+   endsubroutine
+
+
+
+     subroutine BackUp(self)
+       implicit none
+       class(VCAdH),intent(inout)::self
+       !--------------------------------
+       self%Nbackup   = self%Nvar
+       self%VarBackup = self%Var
+     endsubroutine
+
+     subroutine Recover(self)
+       implicit none
+       class(VCAdH),intent(inout)::self
+       !--------------------------------
+       self%Nvar = self%Nbackup
+       self%Var  = self%VarBackup
+     endsubroutine
+
+     subroutine ReSetToZero(self)
+       implicit none
+       class(VCAdH),intent(inout)::self
+       !--------------------------------
+       integer::jc
+       do jc = 1 , self%Nvar
+          self%Var(jc)%v = 0._8
+       enddo
+     endsubroutine
+
+
+
+   subroutine report(self,wtp)
+     implicit none
+     class(VCAdH),intent(inout)::self
+     integer,intent(in)::wtp
+     !-------------------------------------------
+     integer::jc,w
+     character(32)::ty
+     w = wtp
+     write(w,"(A67)",advance='no')"    +=============================================================+"
+     write(w,*)
+     write(w,'(A68)')"    |        Report: Recent position in parameter space           | "
+    !  write(w,*)
+     write(w,'(A68)',advance='no')"    +*************************************************************+ "
+     write(w,*)
+     do jc = 1 , self%Nvar
+        write(w,100,advance='no')"    |",trim(adjustl(self%var(jc)%disc))," = " ,self%var(jc)%V,"    |"
+        write(w,'(A)')" "
+        write(w,'(A68)',advance='no')"    +-------------------------------------------------------------+ "
+        write(w,'(A)')" "
+     enddo
+     100  Format(  A5  , A32 , A3 , ES22.14 , A5 )
    endsubroutine
 
 
