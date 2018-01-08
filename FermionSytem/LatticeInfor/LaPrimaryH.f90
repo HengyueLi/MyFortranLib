@@ -56,7 +56,7 @@
 ! avalable is :
 !                  ![fun] i
 ! others      :
-!                  ![sub] p
+!                  [sub] report(wtp)
 !
 !
 !
@@ -103,6 +103,8 @@ module  LaPrimaryH
     procedure,pass::GetIdata
     procedure,pass::GetState
 
+    procedure,pass::report
+
 
 
     ! procedure :: Copy
@@ -116,6 +118,7 @@ module  LaPrimaryH
 
   private::GetLen,GetIdata,GetState
   private::Copy
+  private::report
 
 contains
 
@@ -263,6 +266,51 @@ contains
     !---------------------------------
     GetState = self%state
   endfunction
+
+
+  subroutine report(self,wtp)
+    implicit none
+    class(PH),intent(inout):: self
+    integer,intent(in)::wtp
+    !---------------------------------
+    character(32),allocatable::Disc(:)
+    complex*16,allocatable::V(:)
+    integer::jc,jc1
+    class(idata),pointer::p
+    Call self%L%SetMark(1)
+
+    Allocate(   Disc(self%L%getlen()) ,   V(self%L%getlen())   )
+
+    do jc = 1 , self%L%getlen()
+      p => self%l%GetMarkedPointerAndNext()
+      Disc(jc) = p%Disc
+      V(jc)    = p%v      !;write(*,*)p%Disc,p%v
+    enddo
+    write(wtp,"(A67)",advance='no')"    +=============================================================+"
+    write(wtp,*)" "
+    write(wtp,'(A68)')"    |                 Hamitonian parameters:                      | "
+    do jc = 1 , self%L%getlen()
+       do jc1 = 1 , jc - 1
+          if ( Disc(jc1)== Disc(jc) ) goto 100
+       enddo
+       call reportone(wtp,Disc(jc),v(jc))
+   100 continue
+    enddo
+    deallocate(disc,v)
+  contains
+
+    subroutine reportone(wtp,disc,v)
+      implicit none
+      integer::wtp
+      character(32)::disc
+      complex*16::v
+      !------------------------------
+      write(wtp,100,advance='no')"    |",trim(adjustl(disc)) ," = " ,real(v), " , " ,imag(v),"         | "
+      write(wtp,*)" "
+  100 format( A5 , A32 ,A3 ,  f7.4  ,A3,  f7.4 ,A11)
+    endsubroutine
+
+  endsubroutine
 
 
 

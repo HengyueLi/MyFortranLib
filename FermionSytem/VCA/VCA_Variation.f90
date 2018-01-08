@@ -283,7 +283,7 @@ end subroutine
     self%sd%Varant => self
     call self%sd%Initialization(order=self%jobi(1) , mode= self%jobi(2) ,&
                   nmax= self%dh%GetTotN_Var_max(),nmin=self%dh%GetTotN_Var_min(),&
-                  Maxitra = 2000,showdetails=self%getshow(),&
+                  Maxitra = 2000,showdetails=self%jobi(6),&
                   deltaX= self%jobr(1),&
                   prX   = self%jobr(2),&
                   prY   = self%jobr(3),&

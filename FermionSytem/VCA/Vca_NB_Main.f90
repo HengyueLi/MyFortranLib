@@ -16,19 +16,20 @@
 !                       │PriH│             │LaCo│
 !                       ╰──┬─╯             ╰┬─┬─╯
 !                          │                │ │
-!                          ├────────────────┘ │
-!                          │                  │
-!                       ╭──┴─╮             ╭──┴─╮
-!                       │CPTH├──────┬──────┤DelH│
-!                       ╰──┬─╯      │      ╰─┬──╯
-!                          │        │        │
-!                       ╭──┴─╮      │        │
-!                       │EDTA│      │        │
-!                       ╰──┬─╯      │        │
-!                          │        │        │
-!                          └───┬────┘        │
-!                           ╭──┴─╮           │
-!                    ───────┤Wafu│           │
+!                          │┌───────────────┘ │
+!                          ││                 │
+!   ╭────╮  ╭────╮      ╭──┴┴╮             ╭──┴─╮
+!   │ GP │  │ EP │      │CPTH│             │DelH│
+!   ╰─┬──╯  ╰─┬┬─╯      ╰──┬┬╯             ╰┬┬──╯
+!     │       │└──────────┐│└───┐           ││
+!     │       │          ╭┴┴──╮ │           ││
+!     │       │          │EDTA│ │           ││
+!     │       │          ╰──┬─╯ │           ││
+!     │       │             └──┐│           ││
+!     │       └───────────────┐││┌──────────┘│
+!     └──────────────────────┐││││           │
+!                           ╭┴┴┴┴┤           │
+!                           │Wafu│           │
 !                           ╰──┬─╯           │
 !                              │             │
 !                              └──────┬──────┘
@@ -48,7 +49,9 @@
 !                   [sub] Initialization( print_,show_ )
 !
 ! avalable gets:
-!                   [fun] G
+!                   [fun] GetOverLapCPTH()
+!                         reutrn a type(LH)::GetOverLapCPTH in which both H and dH have been considered.
+!                         used for CPT calculation.
 !
 ! avalable is :
 !                  ![fun] i
@@ -81,8 +84,17 @@
 !                         integer::CMsearching    return the error code of searching process.
 !                         if (ResetDH) : before CM, reset all parameters in dH to 0.
 !
+!                   [sub] ReportParameters()
 !
 !
+!!&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+! override part
+! ! procedure,pass::SetEDPara
+! ! procedure,pass::SetPrimaryCellHamiltonian
+! ! procedure,pass::SetLatticeConfiguration
+! ! procedure,pass::SetDeltaMatrix
+! ! procedure,pass::SetWaldPara
+! ! procedure,pass::SetVariationalPara
 !!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
 
@@ -133,6 +145,8 @@ module VCA_NB_MAIN
     procedure,pass::TestVariational
     procedure,pass::TestAllVariational
     procedure,pass::CMsearching
+    procedure,pass::ReportParameters
+    procedure,pass::GetOverLapCPTH
 
 
    !!&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
@@ -149,7 +163,8 @@ module VCA_NB_MAIN
 
 
   private::TestVariational,TestAllVariational
-  private::CMsearching
+  private::CMsearching,ReportParameters
+  private::GetOverLapCPTH
 
 
 
@@ -165,7 +180,7 @@ contains
 
   subroutine Initialization(self,print_,show_)
     implicit none
-    class(VCANB),intent(out)::self
+    class(VCANB),intent(inout)::self
     integer,intent(in),optional::print_,show_
     !---------------------------------
     type(GreenPara) :: GP
@@ -285,8 +300,10 @@ contains
     integer::jc
     do jc = 1 , self%DelH%GetNumOfVarialtinalTerms()
        disc = self%DelH%GetDisciption(jc)
+       write(self%getprint(),"(A38,A32)")">>>Test Stationary Point at Direction:",disc
        filename = trim(adjustl(FolderPath))//"/"//trim(adjustl(disc))
        call TestVariational(self,filename,disc,mode,rmode,R,N)
+       write(self%getprint(),"(A9)")"--->done."
     enddo
   endsubroutine
 
@@ -297,6 +314,26 @@ contains
     logical,intent(in)::ResetDH
     !-----------------------------------
     CMsearching = self%vari%CrossOverSearching(ResetDH)
+  endfunction
+
+
+  subroutine ReportParameters(self)
+    implicit none
+    class(VCANB),intent(inout)::self
+    !-----------------------------------
+    Call self%CPTH%report(self%getprint())
+    Call self%DelH%report(self%getprint())
+  endsubroutine
+
+
+
+  function GetOverLapCPTH(self) result(r)
+    implicit none
+    class(VCANB),intent(inout)::self
+    type(LH)::r
+    !-----------------------------------
+    r = self%CPTH
+    call r%AbsorbMeanFiled(self%DelH%GetIdataArray())
   endfunction
 
 

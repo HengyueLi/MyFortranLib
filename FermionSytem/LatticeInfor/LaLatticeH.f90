@@ -36,6 +36,8 @@
 !
 !                         scan all interacting and reset value of whose discription is Dis
 !
+!
+!
 ! avalable gets:
 !
 !                   [fun] GetNnearLC()
@@ -75,6 +77,14 @@
 !                   [sub] AppendLocalDataToHam(H)
 !                        for a input Type(Ham)::H, append all the local interacting (type idata) into it.
 !                        H maybe contains some other terms already, but here it does not check that.
+!
+!                   [sub] Report(wtp)
+!                         integer::wtp
+!                         show the recently paramters
+!
+!                   [sub] AbsorbMeanFiled(idataarry)
+!                         for a idata array class(idata)::idataarry(:)
+!                         put it into the local part.
 !
 !
 !
@@ -134,6 +144,8 @@ module LaLatticeH
     procedure,pass::GetVbasis
     procedure,pass::GetSpinSuppresedTq
     procedure,pass::GetSpinSuppresedLocalHMatrix
+    procedure,pass::Report
+    procedure,pass::AbsorbMeanFiled
   endtype
 
 
@@ -155,6 +167,8 @@ module LaLatticeH
   private::GetSpinSuppresedTq
   private::GetSpinSuppresedLocalHMatrix
   private::GetNearLCpos
+  private::Report
+  private::AbsorbMeanFiled
 
 contains
 
@@ -597,6 +611,83 @@ contains
       !--------------------------------
       r = self%LaC%GetVlReal()
     endfunction
+
+
+    ! subroutine Report(self,wtp)
+    !   implicit none
+    !   class(Lh),intent(inout)::self
+    !   integer,intent(in)::wtp
+    !   !------------------------------
+    !   Call self%PrH%report(wtp)
+    ! endsubroutine
+
+
+    subroutine report(self,wtp)
+      implicit none
+      class(Lh),intent(inout)::self
+      integer,intent(in)::wtp
+      !---------------------------------
+      integer::jc,jc1
+      write(wtp,"(A67)",advance='no')"    +=============================================================+"
+      write(wtp,*)" "
+      write(wtp,'(A68)')"    |                 Hamitonian parameters:                      | "
+      do jc = 1 , self%NHin
+         do jc1 = 1 , jc - 1
+            if ( SELF%Hin(JC1)%Disc== SELF%Hin(JC)%Disc) goto 100
+         enddo
+         call reportone(wtp,SELF%Hin(JC)%Disc,SELF%Hin(JC)%v)
+     100 continue
+      enddo
+    contains
+
+      subroutine reportone(wtp,disc,v)
+        implicit none
+        integer::wtp
+        character(32)::disc
+        complex*16::v
+        !------------------------------
+        !                                
+        write(wtp,100,advance='no')"    |",trim(adjustl(disc)) ," = " ,real(v), " , " ,imag(v),"         | "
+        write(wtp,"(A)")" "
+        write(wtp,'(A68)',advance='no')"    +.............................................................+ "
+        write(wtp,"(A)")" "
+    100 format( A5 , A32 ,A3 ,  f7.4  ,A3,  f7.4 ,A11)
+      endsubroutine
+
+    endsubroutine
+
+
+
+
+
+
+
+
+
+
+
+    subroutine AbsorbMeanFiled(self,idataarry)
+      implicit none
+      class(Lh),intent(inout)::self
+      class(idata),intent(in)::idataarry(:)
+      !---------------------------------------
+      type(idata),allocatable::temp(:)
+      integer::lin
+      lin = size(idataarry)
+      allocate(temp(self%NHin))
+      temp = self%Hin(1:self%NHin)
+      deallocate(self%Hin)
+      allocate(self%Hin(self%NHin+lin))
+      self%Hin(1:self%NHin) = temp
+      self%Hin(self%NHin+1:self%NHin+lin) = idataarry
+      self%NHin = self%NHin + lin
+      DEALLOCATE(temp)
+    endsubroutine
+
+
+
+
+
     ! function GetHamList(self) result(r)
     !   implicit none
     !   class(VCAdH),intent(inout)::self
@@ -618,6 +709,8 @@ contains
     !   call r%EndAppendingInteraction()
     !
     ! endfunction
+
+
 
 
 

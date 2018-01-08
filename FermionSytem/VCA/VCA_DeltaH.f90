@@ -120,6 +120,11 @@
 !                         2ns X 2ns matrix  complex*16
 !
 !
+!                   [fun] GetIdataArray()
+!                         return type(idata)::GetIdataArray(:)
+!
+!
+!
 ! avalable is :
 !                  ![fun] i
 ! others      :
@@ -219,6 +224,7 @@ module VCA_DeltaH
    procedure,pass::Recover
    procedure,pass::ReSetToZero
    procedure,pass::SetAlpha
+   procedure,pass::GetIdataArray
   endtype
 
   private::Initialization,StartAppending,EndAppending!,Append
@@ -244,6 +250,7 @@ module VCA_DeltaH
   private::BackUp,Recover
   private::ReSetToZero
   private::SetAlpha
+  private::GetIdataArray
 contains
 
 
@@ -551,6 +558,19 @@ subroutine GetTotalIdataArray(self,idataarray,n)
     n = Ntry
   enddo
 endsubroutine
+
+
+  function GetIdataArray(self) result(r)
+    implicit none
+    class(VCAdH),intent(inout):: self
+    type(idata),allocatable::r(:)
+    !---------------------------------------------
+    type(idata)::idataarray(Nmax)
+    integer::n
+    call GetTotalIdataArray(self,idataarray,n)
+    allocate(r(n))
+    r = idataarray(1:n)                            
+  endfunction
 
 
 function GetDelatMatrix(self,spini,spinj) result(r)
