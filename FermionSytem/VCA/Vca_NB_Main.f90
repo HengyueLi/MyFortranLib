@@ -53,6 +53,9 @@
 !                         reutrn a type(LH)::GetOverLapCPTH in which both H and dH have been considered.
 !                         used for CPT calculation.
 !
+!                   [fun] GetEDPA()
+!                         get ed para
+!
 ! avalable is :
 !                  ![fun] i
 ! others      :
@@ -112,6 +115,7 @@ module VCA_NB_MAIN
   IMPLICIT NONE
 
 
+
   type,extends(object)::VCANB
     ! private
     !-----------------------------
@@ -147,6 +151,7 @@ module VCA_NB_MAIN
     procedure,pass::CMsearching
     procedure,pass::ReportParameters
     procedure,pass::GetOverLapCPTH
+    procedure,pass::GetEDPA
 
 
    !!&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
@@ -165,6 +170,7 @@ module VCA_NB_MAIN
   private::TestVariational,TestAllVariational
   private::CMsearching,ReportParameters
   private::GetOverLapCPTH
+  private::GetEDPA
 
 
 
@@ -337,7 +343,13 @@ contains
   endfunction
 
 
-
+  type(SolverPara) function GetEDPA(self)
+    implicit none
+    class(VCANB),intent(inout)::self
+    !------------------------------------
+    Call self%CheckInitiatedOrStop()
+    GetEDPA = self%EDPA
+  endfunction
 
 
 

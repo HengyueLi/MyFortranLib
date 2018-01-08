@@ -38,6 +38,8 @@
 !                   [fun] GetSolverType()
 !                         character(2)::GetSolverType
 !
+!                   [fun] GetSymmetry()
+!
 !                   [fun] GetEdPointer()
 !                         return TYPE(ED_GCE) pointer
 !
@@ -128,6 +130,7 @@ Module CEsolver
     procedure,pass::GetOperatorProduct
     procedure,pass::GetNs
     procedure,pass::GetGrandPotential
+    procedure,pass::GetSymmetry
   endtype
 
 
@@ -144,6 +147,7 @@ Module CEsolver
   private::GetSolverType
   private::GetNs
   private::GetGrandPotential
+  private::GetSymmetry
 contains
 
 
@@ -311,6 +315,12 @@ contains
   endfunction
 
 
+  integer function GetSymmetry(self)
+    implicit none
+    class(CES),intent(inout)::self
+    !-------------------------------------
+    GetSymmetry = self%Spara%symmetry
+  endfunction 
 
   integer function GetNs(self)
     implicit none

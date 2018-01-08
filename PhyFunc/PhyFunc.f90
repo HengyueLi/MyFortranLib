@@ -34,6 +34,10 @@
 !                        real*8           ::T  ! temperature
 !                        real*8/complex*16:: Omega
 !                        get the fermin function : f = 1/( exp(omega/T) + 1 )
+!
+!                  [fun] GetPauliMatrix(direction)
+!                        integer::direction     ! = 0,1,2,3  for  I,x,y,z respectivily
+!                        return a 2 by 2 matrix complex*16::GetPauliMatrix(2,2)
 ! avalable IS  :
 !                  [fun] I
 !
@@ -57,11 +61,13 @@ module phyfunc
             procedure,nopass::FermionFuncC
             generic::FermionFunc=>FermionFuncR,FermionFuncC
 
+            procedure,nopass::GetPauliMatrix
+
        endtype
 
 
 
-       private::FermionFuncR,FermionFuncC
+       private::FermionFuncR,FermionFuncC,GetPauliMatrix
 
 
      contains
@@ -92,6 +98,32 @@ module phyfunc
              FermionFuncC = 1._8/(zexp(temp)+1._8)
            endif
          endfunction
+
+
+  function GetPauliMatrix(Direction) result(r)
+    implicit none
+    integer,intent(in)::Direction
+    complex*16::r(2,2)
+    !---------------------------------------
+    select case(Direction)
+    case(0)
+      r(1,1) = ( 1._8 , 0._8 )  ;   r(1,2) = ( 0._8 , 0._8 )
+      r(2,1) = ( 0._8 , 0._8 )  ;   r(2,2) = ( 1._8 , 0._8 )
+    case(1)
+      r(1,1) = ( 0._8 , 0._8 )  ;   r(1,2) = ( 1._8 , 0._8 )
+      r(2,1) = ( 1._8 , 0._8 )  ;   r(2,2) = ( 0._8 , 0._8 )
+    case(2)
+      r(1,1) = ( 0._8 , 0._8 )  ;   r(1,2) = ( 0._8 ,-1._8 )
+      r(2,1) = ( 0._8 , 1._8 )  ;   r(2,2) = ( 0._8 , 0._8 )
+    case(3)
+      r(1,1) = ( 1._8 , 0._8 )  ;   r(1,2) = ( 0._8 , 0._8 )
+      r(2,1) = ( 0._8 , 0._8 )  ;   r(2,2) = (-1._8 , 0._8 )
+    case default
+      write(*,*)"Inccorect input for getting Pauli Matrix, input can only be [0,3]"
+      write(*,*)"Now it is:",Direction
+      stop
+    endselect
+  endfunction
 
 
 

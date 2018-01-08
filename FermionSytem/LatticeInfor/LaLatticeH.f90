@@ -39,6 +39,8 @@
 !
 !
 ! avalable gets:
+!                   [fun] GetNs()
+!                         get total sites in LC
 !
 !                   [fun] GetNnearLC()
 !                         total number of connected LC.
@@ -132,7 +134,7 @@ module LaLatticeH
     procedure,pass::Initialization
     final::Finalization
 
-
+    procedure,pass::GetNs
     procedure,pass::GetNearTMatix
     procedure,pass::GetNearTexpMatrix
     procedure,pass::GetNearLCpos
@@ -157,6 +159,7 @@ module LaLatticeH
   private::SetValueByDiscription
   ! private::SetMatixOneTerm
 
+  private::GetNs
   private::GetNnearLC
   private::GetLocalHMatix
   private::GetNearTMatix
@@ -519,7 +522,12 @@ contains
     endif
   endfunction
 
-
+   integer function GetNs(self)
+     implicit none
+     class(LH),intent(inout)  :: self
+     !-------------------------------------
+     GetNs = self%LaC%GetNs()
+   endfunction
 
     integer function GetNnearLC(self)
       implicit none
@@ -622,12 +630,21 @@ contains
     ! endsubroutine
 
 
-    subroutine report(self,wtp)
+
+   ! mode = 0 : good looking
+   ! mode = 1 : easy to read from file
+    subroutine report(self,wtp,mode)
       implicit none
       class(Lh),intent(inout)::self
       integer,intent(in)::wtp
+      integer,intent(in),optional::mode
       !---------------------------------
-      integer::jc,jc1
+      integer::jc,jc1,Pmode
+      if (present(mode)) then
+        Pmode = mode
+      else
+        Pmode = 0
+      endif
       write(wtp,"(A67)",advance='no')"    +=============================================================+"
       write(wtp,*)" "
       write(wtp,'(A68)')"    |                 Hamitonian parameters:                      | "
@@ -635,23 +652,35 @@ contains
          do jc1 = 1 , jc - 1
             if ( SELF%Hin(JC1)%Disc== SELF%Hin(JC)%Disc) goto 100
          enddo
-         call reportone(wtp,SELF%Hin(JC)%Disc,SELF%Hin(JC)%v)
+         call reportone(wtp,SELF%Hin(JC)%Disc,SELF%Hin(JC)%v,Pmode)
      100 continue
       enddo
     contains
 
-      subroutine reportone(wtp,disc,v)
+      subroutine reportone(wtp,disc,v,Pmode)
         implicit none
         integer::wtp
         character(32)::disc
         complex*16::v
+        integer::Pmode
         !------------------------------
-        !                                
-        write(wtp,100,advance='no')"    |",trim(adjustl(disc)) ," = " ,real(v), " , " ,imag(v),"         | "
-        write(wtp,"(A)")" "
+        select case(Pmode)
+        case(0)
+          write(wtp,100,advance='no')"    |",trim(adjustl(disc)) ," = " ,real(v), " , " ,imag(v),"   | "
+          write(wtp,"(A)")" "
+        case(1)
+          write(wtp,99 ,advance='no')"    |",trim(adjustl(disc)) ," =                            |"
+          write(wtp,"(A)")" "
+          write(wtp,"( A20 , ES22.14 )")"         RealPart = ",real(v)
+          write(wtp,"( A20 , ES22.14 )")"         ImagPart = ",Imag(v)
+        case default
+          write(*,*)"Pmode in report@lalatticeH.f90 error"
+        endselect
         write(wtp,'(A68)',advance='no')"    +.............................................................+ "
         write(wtp,"(A)")" "
-    100 format( A5 , A32 ,A3 ,  f7.4  ,A3,  f7.4 ,A11)
+     99 format( A5  ,A32 , A31 )
+    100 format( A5 , A32 ,A3 ,  ES10.3  ,A3,  ES10.3 ,A5)
+    101 format( A5 , A32 )
       endsubroutine
 
     endsubroutine

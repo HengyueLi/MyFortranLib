@@ -203,7 +203,7 @@ module Mminmaxoptimise
 
 
 
-    subroutine Initialization(self,N,mode,Maxmode,MItrat,showdetails,deltaX,prX,prY,prG)
+    subroutine Initialization(self,N,mode,Maxmode,MItrat,showdetails,deltaX,prX,prY,prG,print_)
                implicit none
                class(minmaxoptimise),intent(inout)::self
                integer::N
@@ -212,9 +212,12 @@ module Mminmaxoptimise
                integer,intent(in)::MItrat
                integer,intent(in)::showdetails
                real(8),intent(in)::deltaX,prX,prY,prG
+               integer,intent(in),optional::print_
 
                !----------------------------------------
                call Unitialization(self)
+               if (present(print_)) self%wtp = print_
+
                self%N           = N
                self%Initiated   = .true.
                self%mode        = mode

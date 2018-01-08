@@ -288,7 +288,7 @@ end subroutine
                   prX   = self%jobr(2),&
                   prY   = self%jobr(3),&
                   prG   = self%jobr(4),&
-                  PRE   = self%jobr(5)             )
+                  PRE   = self%jobr(5)         ,print_ = self%getprint()    )
 
   endsubroutine
 
@@ -332,7 +332,7 @@ end subroutine
     ierro = OptimisePhasePoint(self)
     !-----------------
 
-    if ( ierro ==0 ) then
+    if ( ierro .ne.-9053 ) then
       ! variation is successful!
       write(self%getprint(),*)"  Stationary point have been found successfully!."
       !  report stationary point

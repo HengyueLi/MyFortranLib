@@ -88,6 +88,8 @@ module Msearchsaddle
         !type(ax)::something
         real(8)::y
         integer,private::ierr = -1
+        !------------------------
+        integer::print = 6
     contains
         procedure,pass::Initialization
         procedure,pass::Unitialization
@@ -175,17 +177,19 @@ module Msearchsaddle
 
 
 
-    subroutine Initialization(self,order,mode,nmax,nmin,Maxitra,showdetails,deltaX,prX,prY,prG,PRE)
+    subroutine Initialization(self,order,mode,nmax,nmin,Maxitra,showdetails,deltaX,prX,prY,prG,PRE,print_)
                implicit none
                class(searchsaddle),intent(inout),target::self
                integer::order,mode,nmax,nmin,Maxitra,showdetails
                real(8),intent(in)::deltaX,prX,prY,prG,PRE
+               integer,intent(in),optional::print_
                !----------------------------------------------
                call Unitialization(self)                !;write(*,*)showdetails,6666
+               if (present(print_)) self%print = print_
                self%initiated = .true.
                self%order     = order
-               CALL self%fmax%Initialization(nmax,mode, .true. ,Maxitra,showdetails,deltaX,prX,prY,prG)
-               CALL self%fmin%Initialization(nmin,mode, .false.,Maxitra,showdetails,deltaX,prX,prY,prG)
+               CALL self%fmax%Initialization(nmax,mode, .true. ,Maxitra,showdetails,deltaX,prX,prY,prG,self%print )
+               CALL self%fmin%Initialization(nmin,mode, .false.,Maxitra,showdetails,deltaX,prX,prY,prG,self%print )
                self%fmax%SS => self
                self%fmin%SS => self
                self%PRE  = PRE
