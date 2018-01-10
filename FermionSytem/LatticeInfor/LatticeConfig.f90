@@ -32,6 +32,9 @@
 !                   [fun] GetNs()
 !                         integer       get total number of site in the Lattice Cell
 !
+!                   [fun] GetVp()
+!                         return real*8::GEtVp(3,3)  the PC basis
+!
 !                   [fun] GetSiteP(i)
 !                         return integer::r(3)  is the position of the site
 !
@@ -128,6 +131,7 @@ module LatticeConfig
     procedure,pass::GetSiteRealP
     procedure,pass::GetOrbitIndex
     procedure,pass::GetVlReal
+    procedure,pass::GetVp
   endtype
 
 
@@ -147,7 +151,7 @@ module LatticeConfig
   private::GetSiteRealP
   private::GetOrbitIndex
   private::GetVlReal
-
+  private::GetVp
 contains
 
 
@@ -357,6 +361,15 @@ contains
     !-----------------------------------
     GetOrbitIndex = self%lci(i)
   endfunction
+
+  function GetVp(self) result(r)
+    implicit none
+    class(LaCon),intent(in)::self
+    real*8::r(3,3)
+    !------------------------------------
+    r = self%vp
+  endfunction
+
 
 
 

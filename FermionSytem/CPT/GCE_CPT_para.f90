@@ -34,6 +34,14 @@
 !
 !                   [fun] GetSolverPointer()
 !                         Class(CES),pointer::GetSolverPointer
+!
+!                   [fun] GetCPTHpointer()
+!                         class(lh)::CPTH
+!
+!                   [fun] GetLatticePointer()
+!                         return class(LaCon)
+!
+!
 ! avalable is :
 !                  ![fun] i
 ! others      :
@@ -67,16 +75,21 @@ module GCE_CPT_para
     procedure,pass::Initialization
     procedure,pass::GetSolverPointer
     procedure,pass::ReportPara
+    procedure,pass::GetCPTHpointer
+    procedure,pass::GetLatticePointer
 
   endtype
 
   private::Initialization
   private::GetSolverPointer
   private::ReportPara
+  private::GetCPTHpointer
+  private::GetLatticePointer
 
 
 
 contains
+
 
   subroutine Initialization(self,edpara,cpth)
     implicit none
@@ -132,8 +145,33 @@ contains
     call self%CPTH%Report(wtp,mode)
   endsubroutine
 
+  function GetCPTHpointer(self) result(r)
+    implicit none
+    class(GCECPTpara),intent(in)::self
+    class(lh),pointer::r
+    !---------------------------------------
+    call self%CheckInitiatedOrStop()
+    r => getp(self%CPTH)
+  contains
+    function getp(x) result(y)
+      implicit none
+      class(lh),target::x
+      class(lh),pointer::y
+      !--------------------------
+      y => x
+    endfunction
+  endfunction
 
 
+
+    function GetLatticePointer(self) result(r)
+      implicit none
+      class(GCECPTpara),intent(in)::self
+      class(LaCon),pointer::r
+      !----------------------------------------
+      call self%CheckInitiatedOrStop()
+      r => self%CPTH%GetLatticeConfigPointer()
+    endfunction
 
 
 endmodule

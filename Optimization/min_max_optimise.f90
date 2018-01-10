@@ -324,11 +324,11 @@ module Mminmaxoptimise
          OBJFUN = self%Func()
 
          IF ( self%Maxmode  )THEN
-            OBJFUN=-OBJFUN
+            OBJFUN = - OBJFUN
          END IF
          !------------------------------------------------------!
          !       checking the recent state                      !
-         if (  .not. self%Is_rational() )  self%ierr = -9053    !
+         if (  .not. self%Is_rational() )  self%ierr = - 9053   !
          !------------------------------------------------------!
          end subroutine fval
 
@@ -1575,11 +1575,16 @@ if (iter.ge.ITMAX) then
 endif
 iter=iter+2
 ytry=amotry(self,p,y,psum,mp,np,ndim,ihi,-1.0_8)
+
+if (  self%ierr == - 9053 ) goto 999
+
 if (ytry.le.y(ilo)) then
   ytry=amotry(self,p,y,psum,mp,np,ndim,ihi,2.0_8)
+  if (  self%ierr == - 9053 ) goto 999
   else if (ytry.ge.y(inhi)) then
     ysave=y(ihi)
 ytry=amotry(self,p,y,psum,mp,np,ndim,ihi,0.5_8)
+if (  self%ierr == - 9053 ) goto 999
 if (ytry.ge.ysave) then
 do  i=1,ndim+1
 if(i.ne.ilo)then
@@ -1597,6 +1602,7 @@ else
 iter=iter-1
 endif
 goto 2
+999 continue
 ENDsubroutine
 
 
@@ -1631,6 +1637,12 @@ endif
 
 
 call fval(SELF, ptry, ytry)
+if (  .not. self%Is_rational() ) then
+   self%ierr = - 9053
+   goto 999
+ endif
+ ! if (self%ierro)
+
 if (ytry.lt.y(ihi)) then
 y(ihi)=ytry
 do  j=1,ndim
@@ -1639,6 +1651,7 @@ p(ihi,j)=ptry(j)
 enddo
 endif
 amotry=ytry
+999 continue
 return
 ENDfunction
 
@@ -1648,7 +1661,7 @@ logical function DownHill_Check_Converged(self,p,y,idmin,idmax)
   real(8),intent(in)::p(SELF%N+1,SELF%N),y(SELF%N+1)
   integer,intent(in)::idmin,idmax
   !--------------------------------
-  real*8,parameter::TINY = 1.e-13
+  real*8,parameter::TINY = 1.e-14  ! originally in book = 1.e-13
   real*8::rtol,dx(self%n)
   logical::dyConverged,dxConverged
   integer::jc

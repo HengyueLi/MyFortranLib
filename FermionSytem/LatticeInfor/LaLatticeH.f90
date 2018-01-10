@@ -42,6 +42,9 @@
 !                   [fun] GetNs()
 !                         get total sites in LC
 !
+!                   [fun] GetVp()
+!                         return PC basis
+!
 !                   [fun] GetNnearLC()
 !                         total number of connected LC.
 !
@@ -71,6 +74,9 @@
 !
 !                   [fun] GetVbasis()
 !                         real*8::GetVbasis(3,3)  the basis of LC.
+!
+!                   [fun] GetLatticeConfigPointer()
+!                         return class(LaCon)   lattice configration
 !
 !
 ! avalable is :
@@ -148,6 +154,8 @@ module LaLatticeH
     procedure,pass::GetSpinSuppresedLocalHMatrix
     procedure,pass::Report
     procedure,pass::AbsorbMeanFiled
+    procedure,pass::GetVp
+    procedure,pass::GetLatticeConfigPointer
   endtype
 
 
@@ -172,8 +180,20 @@ module LaLatticeH
   private::GetNearLCpos
   private::Report
   private::AbsorbMeanFiled
+  private::GetVp
+  private::GetLatticeConfigPointer
 
 contains
+
+  function GetLatticeConfigPointer(self) result(r)
+    implicit none
+    class(LH),intent(in) :: self
+    class(LaCon),pointer::r
+    !---------------------------------------
+    call self%CheckInitiatedOrStop()
+    r => self%Lac
+  endfunction
+
 
 
 
@@ -669,7 +689,7 @@ contains
           write(wtp,100,advance='no')"    |",trim(adjustl(disc)) ," = " ,real(v), " , " ,imag(v),"   | "
           write(wtp,"(A)")" "
         case(1)
-          write(wtp,99 ,advance='no')"    |",trim(adjustl(disc)) ," =                            |"
+          write(wtp,99 ,advance='no')"    |",trim(adjustl(disc)) ," =                           |"
           write(wtp,"(A)")" "
           write(wtp,"( A20 , ES22.14 )")"         RealPart = ",real(v)
           write(wtp,"( A20 , ES22.14 )")"         ImagPart = ",Imag(v)
@@ -678,7 +698,7 @@ contains
         endselect
         write(wtp,'(A68)',advance='no')"    +.............................................................+ "
         write(wtp,"(A)")" "
-     99 format( A5  ,A32 , A31 )
+     99 format( A5  ,A32 , A30 )
     100 format( A5 , A32 ,A3 ,  ES10.3  ,A3,  ES10.3 ,A5)
     101 format( A5 , A32 )
       endsubroutine
@@ -714,6 +734,13 @@ contains
     endsubroutine
 
 
+      function GetVp(self) result(r)
+        implicit none
+        class(LH),intent(in)   :: self
+        real*8::r(3,3)
+        !-------------------------------
+        r = self%LaC%GetVp()
+      endfunction
 
 
 

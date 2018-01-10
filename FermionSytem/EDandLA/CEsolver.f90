@@ -38,6 +38,9 @@
 !                   [fun] GetSolverType()
 !                         character(2)::GetSolverType
 !
+!                   [fun] GerEDpara()
+!                         return  type(SolverPara)
+!
 !                   [fun] GetSymmetry()
 !
 !                   [fun] GetEdPointer()
@@ -85,10 +88,11 @@ Module CEsolver
 
 
   type::SolverPara
-    character(2):: SvType      = "NO"    ! = "ED" / "LA"
-    logical     :: IsReal      = .false.
-    integer     :: symmetry    = 0
-    real*8      :: Temperature = 0
+    character(2):: SvType      = "NO"    ! = "ED" / "LA" /
+    integer     :: job         =  0      !
+    logical     :: IsReal      = .false. !
+    integer     :: symmetry    =  0      !
+    real*8      :: Temperature =  0      !
     !--------------------------
     ! ED use
     !
@@ -99,6 +103,11 @@ Module CEsolver
     integer :: M        = 30
     logical :: oth      = .true.
     real*8  :: DegPre   = 1.e-6
+    !***************************
+    ! Dictionary for SvType:
+    character(2):: EDGCE  = "ED"
+    character(2):: LAGCE  = "LA"
+    !----------------
   endtype
 
 
@@ -131,6 +140,7 @@ Module CEsolver
     procedure,pass::GetNs
     procedure,pass::GetGrandPotential
     procedure,pass::GetSymmetry
+    procedure,pass::GerEDpara
   endtype
 
 
@@ -148,7 +158,10 @@ Module CEsolver
   private::GetNs
   private::GetGrandPotential
   private::GetSymmetry
+  private::GerEDpara
 contains
+
+
 
 
     subroutine Initialization(self,Svpara,Ta,Ha,print_,show_)
@@ -173,17 +186,31 @@ contains
 
       self%Spara%SvType = f%get_string_upper(self%Spara%SvType)
       self%Ta => ta
-      select case(self%Spara%SvType)
-      case("ED")
-        call self%ed%Initialization(T=self%Spara%Temperature,Ta=Ta,CH=Ha,IsReal=self%spara%IsReal &
+      ! select case(self%Spara%SvType)
+      ! case("ED")
+      !   call self%ed%Initialization(T=self%Spara%Temperature,Ta=Ta,CH=Ha,IsReal=self%spara%IsReal &
+      !      ,print_=self%getprint())
+      ! case("LA")
+      !   call self%la%Initialization(Ta=Ta,H=Ha,IsReal_=self%spara%IsReal,PRINT_=self%getprint(),&
+      !        SHOW_=self%getshow(),Pre_=self%spara%pre,DegPre_=self%spara%DegPre,Bzero_=self%spara%bzero,&
+      !        M_=self%spara%m,oth_=self%spara%oth)
+      ! case default
+      !   write(self%getprint(),*)"ERROR: Unknow solver type:",self%Spara%SvType;stop
+      ! endselect
+      if (self%Spara%SvType==self%Spara%EDGCE)then
+         call self%ed%Initialization(T=self%Spara%Temperature,Ta=Ta,CH=Ha,IsReal=self%spara%IsReal &
            ,print_=self%getprint())
-      case("LA")
+         goto 101 ! out case
+      endif
+      if (self%Spara%SvType==self%Spara%LAGCE)then
         call self%la%Initialization(Ta=Ta,H=Ha,IsReal_=self%spara%IsReal,PRINT_=self%getprint(),&
              SHOW_=self%getshow(),Pre_=self%spara%pre,DegPre_=self%spara%DegPre,Bzero_=self%spara%bzero,&
              M_=self%spara%m,oth_=self%spara%oth)
-      case default
-        write(self%getprint(),*)"ERROR: Unknow solver type:",self%Spara%SvType;stop
-      endselect
+        GOTO 101
+      endif
+
+      write(self%getprint(),*)"ERROR: Unknow solver type:",self%Spara%SvType;stop
+  101 continue
 
     endsubroutine
 
@@ -210,7 +237,7 @@ contains
     class(ED_GCE),pointer::r
     !-------------------------------------
     call SELF%CheckInitiatedOrStop()
-    if (self%Spara%SvType=="ED")then
+    if (self%Spara%SvType==self%Spara%EDGCE)then
       r => InterGetEDPointer(self%ed)!self%ed
     else
       write(self%getprint(),*)"ERROR: Rectent solver is not ED type";stop
@@ -223,7 +250,7 @@ contains
     class(LA_GCE),pointer::r
     !-------------------------------------
     call SELF%CheckInitiatedOrStop()
-    if (self%Spara%SvType=="LA")then
+    if (self%Spara%SvType==self%Spara%laGCE)then
       r => InterGetLAPointer(SELF%LA) !self%la
     else
       write(self%getprint(),*)"ERROR: Rectent solver is not LA type";stop
@@ -235,12 +262,25 @@ contains
     implicit none
     class(CES),intent(inout)   :: self
     !-------------------------------------
-    select case(self%Spara%SvType)
-    case("ED")
+    ! select case(self%Spara%SvType)
+    ! case("ED")
+    !   call self%ed%SynchronizeWithHamiltonian()
+    ! case("LA")
+    !   call self%la%SynchronizeWithHamiltonian()
+    ! end select
+
+    if(self%Spara%SvType==self%Spara%EDGCE)then
       call self%ed%SynchronizeWithHamiltonian()
-    case("LA")
+      GOTO 101
+    endif
+    if(self%Spara%SvType==self%Spara%LAGCE)then
       call self%la%SynchronizeWithHamiltonian()
-    end select
+      GOTO 101
+    endif
+
+    WRITE(SELF%GETPRINT(),*)"Type is not defined in SynchronizeWithHamiltonian@CES"
+    stop
+101 continue
   endsubroutine
 
 
@@ -264,28 +304,55 @@ contains
     implicit none
     class(CES),intent(inout)   :: self
     !-------------------------------------
-    call CheckTypeOrStop(self,"ED")
-    GetRZ = self%ed%GetRz()
+    ! call CheckTypeOrStop(self,"ED")
+    ! GetRZ = self%ed%GetRz()
+    !-----------------------------------------------
+    if (self%Spara%SvType==self%Spara%EDGCE)then
+        GetRZ = self%ed%GetRz()   
+        goto 101
+    endif
+    !-----------------------------------------------
+    write(self%getprint(),*)"Unknow ED type in GetRZ@CESolver";stop
+101 continue
   endfunction
 
   integer FUNCTION GetDe(self)
     implicit none
     class(CES),intent(inout)   :: self
     !-------------------------------------
-    call CheckTypeOrStop(self,"LA")
-    GetDe = SELF%LA%GetDe()
+    ! call CheckTypeOrStop(self,"LA")
+    ! GetDe = SELF%LA%GetDe()
+    if (self%Spara%SvType==self%Spara%LAGCE)then
+        GetDe = SELF%LA%GetDe()
+        goto 101
+    endif
+    !-----------------------------------------------
+    write(self%getprint(),*)"Unknow ED type in GetDe@CESolver";stop
+101 continue
   endfunction
 
   real*8 function GetEg(self)
     implicit none
     class(CES),intent(inout)   :: self
     !-------------------------------------
-    select case(self%Spara%SvType)
-    case("ED")
-      GetEg = self%ed%get_Eg()
-    case("LA")
-      GetEg = self%LA%GetEg()
-    endselect
+    ! select case(self%Spara%SvType)
+    ! case("ED")
+    !   GetEg = self%ed%get_Eg()
+    ! case("LA")
+    !   GetEg = self%LA%GetEg()
+    ! endselect
+    if (self%Spara%SvType==self%Spara%EDGCE)then
+        GetEg = self%ed%get_Eg()
+        goto 101
+    endif
+    !--------------------------------------------
+    if (self%Spara%SvType==self%Spara%LAGCE)then
+        GetEg = self%LA%GetEg()
+        goto 101
+    endif
+    !--------------------------------------------
+    write(self%getprint(),*)"Unknow ED type in GetEg@CESolver";stop
+101 continue
   endfunction
 
 
@@ -296,12 +363,24 @@ contains
     !-------------------------------------
     call self%CheckInitiatedOrStop()
     call self%SynchronizeWithHamiltonian()
-    select case(self%Spara%SvType)
-    case("ED")
-      GetOperatorProduct = self%ed%get_trace_value(opt)
-    case("LA")
-      GetOperatorProduct = self%la%GetOperateProduct(opt)
-    endselect
+    ! select case(self%Spara%SvType)
+    ! case("ED")
+    !   GetOperatorProduct = self%ed%get_trace_value(opt)
+    ! case("LA")
+    !   GetOperatorProduct = self%la%GetOperateProduct(opt)
+    ! endselect
+    if (self%Spara%SvType==self%Spara%EDGCE)then
+        GetOperatorProduct = self%ed%get_trace_value(opt)
+        goto 101
+    endif
+    !--------------------------------------------
+    if (self%Spara%SvType==self%Spara%LAGCE)then
+        GetOperatorProduct = self%la%GetOperateProduct(opt)
+        goto 101
+    endif
+    !--------------------------------------------
+    write(self%getprint(),*)"Unknow ED type in GetOperatorProduct@CESolver";stop
+101 continue
   endfunction
 
 
@@ -320,7 +399,7 @@ contains
     class(CES),intent(inout)::self
     !-------------------------------------
     GetSymmetry = self%Spara%symmetry
-  endfunction 
+  endfunction
 
   integer function GetNs(self)
     implicit none
@@ -329,21 +408,45 @@ contains
     GetNs = self%ta%get_ns()
   endfunction
 
+  ! real*8 function GetGrandPotential(self)
+  !   implicit none
+  !   class(CES),intent(inout)::self
+  !   !-------------------------------------
+  !   select case(self%Spara%SvType)
+  !   case("ED")
+  !     GetGrandPotential = self%ed%get_Eg() &
+  !                       - self%Spara%Temperature*dlog( self%ed%GetRz() ) !;write(*,*)self%ed%get_Eg(),self%Spara%Temperature,self%ed%GetRz(),999;stop
+  !   case("LA")
+  !     GetGrandPotential = self%la%GetEg()
+  !   endselect
+  ! endfunction
   real*8 function GetGrandPotential(self)
     implicit none
     class(CES),intent(inout)::self
     !-------------------------------------
-    select case(self%Spara%SvType)
-    case("ED")
-      GetGrandPotential = self%ed%get_Eg() &
-                        - self%Spara%Temperature*dlog( self%ed%GetRz() ) !;write(*,*)self%ed%get_Eg(),self%Spara%Temperature,self%ed%GetRz(),999;stop
-    case("LA")
-      GetGrandPotential = self%la%GetEg()
-    endselect
+    if (self%Spara%SvType==self%Spara%EDGCE)then
+        GetGrandPotential = self%ed%get_Eg() &
+                            - self%Spara%Temperature*dlog( self%ed%GetRz() )
+        goto 101
+    endif
+    !--------------------------------------------
+    if (self%Spara%SvType==self%Spara%LAGCE)then
+        GetGrandPotential = self%la%GetEg()
+        goto 101
+    endif
+    !--------------------------------------------
+    write(self%getprint(),*)"Unknow ED type in GetGrandPotential@CESolver";stop
+101 continue
   endfunction
 
 
 
+  type(SolverPara) function GerEDpara(self)
+    implicit none
+    class(CES),intent(inout)     :: self
+    !-------------------------------------
+    GerEDpara = self%Spara
+  endfunction
 
 
 

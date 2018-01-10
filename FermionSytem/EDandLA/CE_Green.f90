@@ -67,7 +67,7 @@ module CE_Green
     ! lanczos G use
     integer :: M     = 90
     logical :: oth   = .true.
-    real*8  :: bzero = 1.e-7
+    real*8  :: bzero = 1.e-6
   endtype
 
   type,extends(object)::CEG
@@ -110,6 +110,31 @@ contains
   endsubroutine
 
 
+  ! subroutine GetG(self,i,spini,j,spinj,Nomega,Omega,G)
+  !   implicit none
+  !   class(CEG),intent(inout):: self
+  !   integer,intent(in )::i,spini,j,spinj,Nomega
+  !   complex*16,intent(in )::Omega(Nomega)
+  !   complex*16,intent(out)::G(Nomega)
+  !   !--------------------------------------------------
+  !   type(LAGCEGUSV)   :: LAG
+  !   type(EDGCEGreenf) :: EDG
+  !   class(ED_GCE),pointer::ED
+  !   class(LA_GCE),pointer::la
+  !   call self%CheckInitiatedOrStop()
+  !   select case(self%solver%GetSolverType())
+  !   case("ED")
+  !     ed => self%solver%GetEdPointer()
+  !     call edg%Initialization(ED,self%getprint())
+  !     call edg%GetG(i,spini,j,spinj,Nomega,Omega,G)
+  !   case("LA")
+  !     la => self%solver%GetlaPointer()
+  !     call lag%Initialization(LA,i,spini,j,spinj ,self%gp%m,self%gp%oth,self%gp%bzero,&
+  !           self%getprint(),self%getshow())
+  !     call lag%GetG(Nomega,Omega,G)
+  !   endselect
+  ! endsubroutine
+
   subroutine GetG(self,i,spini,j,spinj,Nomega,Omega,G)
     implicit none
     class(CEG),intent(inout):: self
@@ -121,19 +146,34 @@ contains
     type(EDGCEGreenf) :: EDG
     class(ED_GCE),pointer::ED
     class(LA_GCE),pointer::la
+    type(SolverPara)::edpara
     call self%CheckInitiatedOrStop()
-    select case(self%solver%GetSolverType())
-    case("ED")
+
+    edpara = self%solver%GerEDpara()
+
+    !---------------------------------------------------
+    ! for case EDGCE
+    if (edpara%SvType==edpara%EDGCE)then
       ed => self%solver%GetEdPointer()
       call edg%Initialization(ED,self%getprint())
       call edg%GetG(i,spini,j,spinj,Nomega,Omega,G)
-    case("LA")
+      goto 101
+    endif
+    !--------------------------------------------------
+    ! for case LAGCE
+    if (edpara%SvType==edpara%LAGCE)then
       la => self%solver%GetlaPointer()
       call lag%Initialization(LA,i,spini,j,spinj ,self%gp%m,self%gp%oth,self%gp%bzero,&
             self%getprint(),self%getshow())
       call lag%GetG(Nomega,Omega,G)
-    endselect
+      goto 101
+    endif
+
+    write(self%getprint(),*)"Undefined ED type in GetG@CE_Green";stop
+101 continue
   endsubroutine
+
+
 
   subroutine GetGreenMatrix(self,spini,spinj,NOmega,Omega,GM)
     implicit none

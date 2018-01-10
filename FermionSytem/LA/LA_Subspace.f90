@@ -333,7 +333,7 @@ module LA_Subspace
         call oper%act(s8,s9,sign)
         if (s9.ne.-1_8)then
             so = ta%get_basis_to_sub_index(s9)
-            AddStateOut(so) = AddStateOut(so) + Vi * StateIn(jc)
+            AddStateOut(so) =  AddStateOut(so) + Vi * StateIn(jc) * sign
         endif
       enddo
     endsubroutine

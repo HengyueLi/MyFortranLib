@@ -237,7 +237,7 @@ contains
     ! find sub
     call self%GSl%Initialization(self%print)
     ! find out one of the GS space
-    do jc = 1 , self%nsub
+    do jc = 1 , self%nsub                     !;write(*,*)jc,self%sub(jc)%GetEg()
        if (self%sub(jc)%GetEg().le.Eg) Eg = self%sub(jc)%GetEg()
     enddo
     !-------------

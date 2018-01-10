@@ -171,6 +171,12 @@ contains
              self%CH    => CH
              if (present(print_)) self%print = print_
 
+             !---check T----
+             if (T.le.0.0_8)then
+                write(self%print,*)"Finite temperature T should >0. Now T=",T
+                stop
+             endif
+
 
 
              self%Nsub = self%Ta%get_nsub()
@@ -215,7 +221,7 @@ contains
              !------------------------------------
              integer(8)::jc
              do jc = 1_8 ,self%Nsub
-                call self%Hspace(jc)%diagonalization()    
+                call self%Hspace(jc)%diagonalization()
              enddo
              self%Normolized = .false.
              self%EigenId = self%CH%GetEigenId()

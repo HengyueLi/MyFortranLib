@@ -208,7 +208,7 @@ module ED_Subspace
     class(EDSubSpace),intent(inout)::self
     !---------------------------------------
     TYPE(nummethod)::num
-    real*8,allocatable::Hr(:,:)                       
+    real*8,allocatable::Hr(:,:)
 
     call set_Hamiltonian_matrix_element(self)
 
@@ -223,7 +223,7 @@ module ED_Subspace
       call num%ED_Hermitian_matrix("U",self%d,self%Hs,self%E)
     endif
     !--------------
-    self%Normolized = .false.
+    self%Normolized = .false.                           
 
   endsubroutine
 

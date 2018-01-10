@@ -68,17 +68,17 @@ module LA_CE_G_PQ_unsave
   type::LAPQUSV
    private
    logical:: initiated = .false.
-   class(LASubSpace),pointer ::LAsub        => null()
-   class(table),pointer      ::ta           => null()
-   type(FermOper)            ::A,B
-   integer                   ::BSubId
-   integer                   ::BSubD
+   class(LASubSpace),pointer :: LAsub        => null()
+   class(table),pointer      :: ta           => null()
+   type(FermOper)            :: A,B
+   integer                   :: BSubId
+   integer                   :: BSubD
    !------
-   integer                   ::M            =  90
-   logical                   ::oth          = .false.
-   real*8                    ::bzero        = 0.000001_8
-   integer                   ::eta
-   logical                   ::UseFrac
+   integer                   :: M            =  90
+   logical                   :: oth          = .false.
+   real*8                    :: bzero        = 0.000001_8
+   integer                   :: eta
+   logical                   :: UseFrac
 
 
    integer::print = 6
@@ -180,7 +180,7 @@ contains
     complex*16::SM(self%BSubD,self%M),AGS(self%BSubD),mags,gam,Mt(self%BSubD)!,temp
     complex*16,allocatable::am(:)
     real*8    ::A(SELF%M),B(SELF%M),Eg
-    INTEGER   ::CutM,jcm,jcmt,Gd
+    INTEGER   ::CutM,jcm,jcmt,Gd,KRM
     real*8,allocatable::Hi(:,:),Ei(:)
     logical::IsReal
     !-------------------
@@ -194,11 +194,25 @@ contains
     TA => self%ta
     H  => self%lasub%GetHamPointer()
     allocate(sl)                                                   !;write(*,*)self%bzero
+
+    KRM = min ( self%m  ,  self%BSubD  )
+
+!---------------------------------------------------------------------------------------
+!   set M
+    ! call self%lasub%creat_krylov_space(&
+    ! Ta =  TA  , H=h,sl=SL,&
+    ! isreal=self%lasub%IsSysReal(),subid=self%BSubId,d=self%BSubD,&
+    ! OTH1   = self%oth, OTH2=.false.,Bzero=self%bzero,&
+    ! M=self%m,STATE_M=sm,A=A,B=B(2:self%M),Mcut=CutM,wtp=SELF%PRINT,SHOW=SELF%show)
+!---------------------------------------------------------------------------------------
+!  check max M as d
     call self%lasub%creat_krylov_space(&
     Ta =  TA  , H=h,sl=SL,&
     isreal=self%lasub%IsSysReal(),subid=self%BSubId,d=self%BSubD,&
     OTH1   = self%oth, OTH2=.false.,Bzero=self%bzero,&
-    M=self%m,STATE_M=sm,A=A,B=B(2:self%M),Mcut=CutM,wtp=SELF%PRINT,SHOW=SELF%show)
+    M=KRM,STATE_M=sm(:,1:KRM),A=A(1:KRM),B=B(2:KRM),Mcut=CutM,wtp=SELF%PRINT,SHOW=SELF%show)
+
+
     deallocate(sl)
     IF (CutM.eq.0) goto 999
     !------------------------------------
