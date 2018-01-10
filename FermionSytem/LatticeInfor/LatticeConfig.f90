@@ -25,7 +25,7 @@
 !                  [sub] Initialization(Vp,PC,PCi,Vl)
 !                        real*8 ::Vp(3,3)    the basis of the primary cell.
 !                        real*8 ::PC(3,Np)   Np is the number of sites in Primary cell. PC(3,i) is the position
-!                        integer::PCi(Np)    orbital index.          !1-basis
+!                        integer::PCi(Np)    orbital index.     (>=1)     !1-basis
 !                        integer::Vl(3,3)    use Vp as basis, the three vector of lattice cell
 !
 ! avalable gets:
@@ -39,7 +39,7 @@
 !                         return integer::r(3)  is the position of the site
 !
 !                   [fun] GetSiteRealP(i)
-!                         return real*8::r(3)  is the position of site in real space.
+!                         return real*8::r(3)  is the position of (LC) site in real space.
 !
 !                   [fun] GetOrbitIndex(i):
 !                         integer::
@@ -166,6 +166,7 @@ contains
     !--------------------------------------------------
     integer::jc,jc1,jc2
     real*8 ::R(3)
+    character(32)::InterC
 
     call UnInitialization(self)   ;  self%initiated = .true.
 
@@ -177,6 +178,17 @@ contains
       if (size(PC(:,1)).ne.3)then
          write(self%print,*)"ERROR: format of input PC in LaCon is wrong." ; stop
       endif
+    !--------------------------------------------------------------------------------
+    ! check pci > 0
+     do jc = 1 , size(pci)
+        if (pci(jc)<1)then
+          write(self%print,*)"ERROR: pci >=1 in LaCon@latticeconfig "
+          write(self%print,"(A14,I2,A4)",advance='no')"while now pci( ",jc," ) = "
+          write(InterC,*)pci(jc)
+          write(self%print,*)trim(adjustl(InterC)) ;stop
+        endif
+     enddo
+    !--------------------------------------------------------------------------------
       allocate(self%pc , source = PC )
       allocate(self%pci, source = pci)
     !-------------------------------------------------------------------------------
