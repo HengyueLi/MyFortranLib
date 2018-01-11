@@ -180,6 +180,7 @@ contains
     !-------------------------------------------------
     complex*16::Gp(Nomega)
 
+    call self%LAsub%SynchronizeWithHamiltonian()
 
     call self%p%getg(Nomega,Omega,Gp)   ! ;write(*,*)Gp(1),"Gp"
     call self%q%getg(Nomega,Omega,G )

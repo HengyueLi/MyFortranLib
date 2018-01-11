@@ -148,13 +148,15 @@ contains
     !-------------------------------------------------
     integer::jc,sid
     complex*16::dG(Nomega)
-    G = (0._8,0._8)                                 !;write(*,*)"start"
+    G = (0._8,0._8)
+    call self%FullLa%SynchronizeWithHamiltonian()
+                                                !; write(*,*)"here",self%FullLa%GetDe();stop
     do jc = 1 , self%FullLa%GetNsubGS()
        sid = self%FullLa%GetSubIdGs(jc)
        call self%subG(sid)%getG(Nomega,Omega,dG)
        G = G + dG * self%FullLa%GetSubDe(sid)
-    enddo                                       !;write(*,*)sum(G),self%FullLa%GetDe()
-    G = G / self%FullLa%GetDe()                    ! ;write(*,*)"here"
+    enddo                                     !;write(*,*)sum(G),self%FullLa%GetDe()
+    G = G / self%FullLa%GetDe()
   endsubroutine
 
 

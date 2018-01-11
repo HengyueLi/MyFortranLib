@@ -3,7 +3,7 @@
 ! TYPE  :  MODULE
 ! NAME  :  LA_GCESpace
 ! OBJECT:  TYPE(LA_GCE)
-! USED  :  LA_Subspace,basic_math_functions
+! USED  :  LA_Subspace,basic_math_functions,CodeObject
 ! DATE  :  2018-01-07
 ! AUTHOR:  hengyueli@gmail.com
 !--------------
@@ -84,6 +84,7 @@ endmodule
 
 
 module LA_GCESpace
+  use CodeObject
   use List20171205,only:sublist => ListStru , data
   use fermion_table
   use FermionHamiltonian
@@ -91,9 +92,9 @@ module LA_GCESpace
   implicit none
 
 
-  TYPE::LA_GCE
+  TYPE,extends(object)::LA_GCE
     private
-    logical:: Initiated  =  .false.
+    ! logical:: Initiated  =  .false.
     class(table),pointer::Ta => null()
     class(Ham),pointer :: H  => null()
     integer::EigenId  = -20171204
@@ -113,8 +114,8 @@ module LA_GCESpace
     logical::oth      = .true.
     real*8 ::DegPre   = 1.e-6
    !------------
-    integer::print = 6
-    integer::show  = 0
+    ! integer::print = 6
+    ! integer::show  = 0
 
    contains
      procedure,pass::Initialization
@@ -165,12 +166,12 @@ contains
     !----------------------------------------------
     integer::jc
     !-----------
-    call UnInitialization(self) ; self%initiated = .true.
+    call UnInitialization(self) ;call self%SetInitiated(.true.)!; self%initiated = .true.
     self%Ta => Ta
     self%H  => H
     if(present(IsReal_))  self%isreal = IsReal_
-    if (present(PRINT_))  self%print  = print_
-    if (present(SHOW_))   self%show   = SHOW_
+    if (present(PRINT_))  call self%setprint(print_)!self%print  = print_
+    if (present(SHOW_))   call self%setshow(show_)!self%show   = SHOW_
     if (present(DegPre_)) self%DegPre = DegPre_
     if (present(Pre_))    self%Pre    = Pre_
     if (present(Bzero_))  self%bzero  = Bzero_
@@ -178,7 +179,7 @@ contains
     if (present(oth_))    self%oth    = oth_
     !-------------------------------------------------
     if (.not.self%Ta%Is_initiated()) then
-      write(self%print,*)"Table should be initiated befora initiate LA_GCE";stop
+      write(self%getprint(),*)"Table should be initiated befora initiate LA_GCE";stop
       stop
     endif
     !-------------------------------------------------
@@ -186,7 +187,7 @@ contains
     allocate(self%sub(self%nsub))
     do jc = 1 , self%nsub
        call self%sub(jc)%Initialization(Ta=self%ta,IsReal=self%IsReal,&
-                H=self%H,subid=jc,PRINT_=self%print,show_=self%show,  &
+                H=self%H,subid=jc,PRINT_=self%getprint(),show_=self%getshow(),  &
                 PreE_=self%pre,PreDe_=self%DegPre,bzero_=self%bzero,M_=self%m,Oth_=self%oth)
     enddo
   endsubroutine
@@ -195,8 +196,10 @@ contains
     implicit none
     class(LA_GCE),intent(inout)::self
     !----------------------------------------------
-    if (self%initiated)then
-       self%initiated = .false.
+    ! if (self%initiated)then
+    if (self%IsInitiated())then
+      !  self%initiated = .false.
+      call self%SetInitiated(.false.)
        !--------------------------
        deallocate(self%sub)
     endif
@@ -235,7 +238,7 @@ contains
     call self%SUB%SynchronizeWithHamiltonian()
     !--------------------------------------------------
     ! find sub
-    call self%GSl%Initialization(self%print)
+    call self%GSl%Initialization(self%getprint())
     ! find out one of the GS space
     do jc = 1 , self%nsub                     !;write(*,*)jc,self%sub(jc)%GetEg()
        if (self%sub(jc)%GetEg().le.Eg) Eg = self%sub(jc)%GetEg()
@@ -270,6 +273,7 @@ contains
     implicit none
     class(LA_GCE),intent(inout)::self
     !----------------------------------------------
+
     GetDe = self%de                                !;write(*,*)self%de ,self%nsub
   endfunction
 

@@ -43,7 +43,7 @@
 !
 !                   [fun] GetOrbitIndex(i):
 !                         integer::
-!                         return the orbital index of site i
+!                         return the orbital index of site i (i is index in LC) 
 !
 !                   [fun] GetPcPos(i)
 !                         return integer::r(3) is the position of i-th PC.

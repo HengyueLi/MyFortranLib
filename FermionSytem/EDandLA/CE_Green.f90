@@ -3,7 +3,7 @@
 !!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 ! TYPE  :  MODULE
 ! NAME  :  CE_Green
-! OBJECT:  TYPE(CEG)
+! OBJECT:  TYPE(CEG)  ,  Type(GreenPara)
 ! USED  :  CEsolver,CodeObject,LA_GCE_G_Unsave,ED_GCE_G
 ! DATE  :  2018-01-07
 ! AUTHOR:  hengyueli@gmail.com
@@ -165,7 +165,7 @@ contains
       la => self%solver%GetlaPointer()
       call lag%Initialization(LA,i,spini,j,spinj ,self%gp%m,self%gp%oth,self%gp%bzero,&
             self%getprint(),self%getshow())
-      call lag%GetG(Nomega,Omega,G)
+      call lag%GetG(Nomega,Omega,G)                 
       goto 101
     endif
 
