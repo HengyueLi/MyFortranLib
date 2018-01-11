@@ -250,7 +250,6 @@ contains
       KPointsOut(:,  (jc1-1)*NKstep + 1 : jc1*NKstep     ) = tempK
     enddo
   contains
-
     subroutine TwoKline(k1,k2,nk,kl)
       implicit none
       integer,intent(in)::nk
