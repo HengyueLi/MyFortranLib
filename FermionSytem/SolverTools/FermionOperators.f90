@@ -73,7 +73,7 @@
 !                        integer::para(8)!information for operators
 !                        integer::print_  ! where to print, default is 6
 !                  [sub] UnInitialization()
-!                  
+!
 ! avalable gets:
 !
 !                  [fun] get_para()
@@ -598,7 +598,7 @@ module FermionOperators
       implicit none
       integer,intent(in)::c
       !----------------------------------------
-      if ((c.ge.0) .and.  (c.le.1)  )then
+      if ((c==0) .or.  (c==1)  )then
       else
          write(*,*)"In definition of operator, spin out of rang.";stop
       endif

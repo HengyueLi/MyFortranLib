@@ -36,6 +36,14 @@
 !
 !                         scan all interacting and reset value of whose discription is Dis
 !
+!                   [sub] SetMeanFieldState(tf)         !spin are 0-basis, sites are 1-basis.
+!                         set meanfil or not.
+!                         logical::tf
+!
+!                   [sub] SetMeanField(M,spini,spinj)   !spin are 0-basis, sites are 1-basis.
+!                         complex*16::M(self%ns,self%ns)
+!                         integer::spini,spinj
+!
 !
 !
 ! avalable gets:
@@ -77,6 +85,13 @@
 !
 !                   [fun] GetLatticeConfigPointer()
 !                         return class(LaCon)   lattice configration
+!
+!                   [fun] GetMeanFiled(spini,spinj)  !spin are 0-basis, sites are 1-basis.
+!                         complex*16::GetMeanFiled(self%ns,self%ns)
+!
+!                   [fun] GetMeanFieldState()
+!                         logical
+!
 !
 !
 ! avalable is :
@@ -136,6 +151,13 @@ module LaLatticeH
 
     ! class(Ham),pointer   :: Hm   => NULL()    ! Ham used for cluster solver.
 
+    !------------------------------------------------
+    ! the possible meanfiled .
+    ! For pure CPT, there is not such kind of term.
+    ! for other, VCA and DMFT, we have this term.
+    logical::HaveMeanFiled
+    complex*16,allocatable::DeltaM(:,:,:,:) !   (ns,ns,0:1,0:1) the later two are spin index.
+
   CONTAINS
     procedure,pass::Initialization
     final::Finalization
@@ -156,6 +178,10 @@ module LaLatticeH
     procedure,pass::AbsorbMeanFiled
     procedure,pass::GetVp
     procedure,pass::GetLatticeConfigPointer
+    procedure,pass::SetMeanFieldState
+    procedure,pass::SetMeanField
+    procedure,pass::GetMeanField
+    procedure,pass::GetMeanFieldState
   endtype
 
 
@@ -182,17 +208,9 @@ module LaLatticeH
   private::AbsorbMeanFiled
   private::GetVp
   private::GetLatticeConfigPointer
+  private::SetMeanFieldState,SetMeanField,getMeanField,GetMeanFieldState
 
 contains
-
-  function GetLatticeConfigPointer(self) result(r)
-    implicit none
-    class(LH),intent(in) :: self
-    class(LaCon),pointer::r
-    !---------------------------------------
-    call self%CheckInitiatedOrStop()
-    r => self%Lac
-  endfunction
 
 
 
@@ -229,6 +247,10 @@ contains
     !-----------------------------------------
     call SettingLatticeHbyPrimaryH(self)
     call ExtendNegativePartH(self)
+
+    !----------------------------
+    self%HaveMeanFiled = .false.
+    allocate(self%DeltaM(self%Ns,self%Ns,0:1,0:1))
   endsubroutine
 
   subroutine Finalization(self)
@@ -236,7 +258,7 @@ contains
     type(LH),intent(inout)::self
     !-----------------------------
     if (self%IsInitiated())then
-       deallocate(   self%Hin  , self%Hou    )
+       deallocate(   self%Hin  , self%Hou   , self%DeltaM )
        call self%SetInitiated( .false. )
     endif
   endsubroutine
@@ -496,7 +518,6 @@ contains
     call self%CheckInitiatedOrStop()
     r = (0._8,0._8)
     do jc = 1 , self%NHin
-      ! call SetMatixOneTerm(self%ns,r,spini,spinj,self%Hin(jc),.True.)
        call self%Hin(jc)%SetIntoMatix(self%ns,r,spini,spinj,.True.)
     enddo
   endfunction
@@ -742,6 +763,49 @@ contains
         r = self%LaC%GetVp()
       endfunction
 
+
+        function GetLatticeConfigPointer(self) result(r)
+          implicit none
+          class(LH),intent(in) :: self
+          class(LaCon),pointer::r
+          !---------------------------------------
+          call self%CheckInitiatedOrStop()
+          r => self%Lac
+        endfunction
+
+
+        logical function GetMeanFieldState(self)
+          implicit none
+          class(LH),intent(inout) :: self
+          !---------------------------------------
+          GetMeanFieldState = self%HaveMeanFiled
+        endfunction
+
+        subroutine SetMeanFieldState(self,tf)
+          implicit none
+          class(LH),intent(inout) :: self
+          logical,intent(in)::tf
+          !---------------------------------------
+          self%HaveMeanFiled = tf
+        endsubroutine
+
+        subroutine SetMeanField(self,M,spini,spinj)
+          implicit none
+          class(LH),intent(inout) :: self
+          complex*16,intent(in)::M(self%ns,self%ns)
+          integer,intent(in)::spini,spinj
+          !---------------------------------------
+          self%DeltaM(:,:,spini,spinj) = M
+        endsubroutine
+
+        function getMeanField(self,spini,spinj) result(r)
+          implicit none
+          class(LH),intent(inout) :: self
+          integer,intent(in)::spini,spinj
+          complex*16::r(self%ns,self%ns)
+          !---------------------------------------
+          r = self%DeltaM(:,:,spini,spinj)
+        endfunction
 
 
     ! function GetHamList(self) result(r)

@@ -492,8 +492,8 @@ contains
        y2 = real(FuncF(self,Gtemp) * self%IntOmega( 0))
        ReccorectI = (x1*y2-y1*x2)/(x1-x2)
        ReccorectI = ReccorectI / 4  !  degree = 90.   ->  d/2Pi
-       ReccorectI = ReccorectI * 2 ! upper and lower plane
-    endselect                                  ! ;WRITE(*,*)ReccorectI
+       ReccorectI = ReccorectI * 2  !  upper and lower plane
+    endselect                       !  WRITE(*,*)ReccorectI,y1,y2
   endfunction
 
   real*8 function GetI(self)

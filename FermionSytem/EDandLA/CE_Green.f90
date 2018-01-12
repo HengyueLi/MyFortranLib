@@ -41,6 +41,7 @@
 !                          complex*16,intent(in)::Omega(Nomega)
 !                          complex*16,intent(out)::GM(Nomega,self%ns,self%ns)
 !                         here the matri index is 1-basis
+!                         spin is 0-basis.
 !
 !
 !
@@ -165,7 +166,7 @@ contains
       la => self%solver%GetlaPointer()
       call lag%Initialization(LA,i,spini,j,spinj ,self%gp%m,self%gp%oth,self%gp%bzero,&
             self%getprint(),self%getshow())
-      call lag%GetG(Nomega,Omega,G)                 
+      call lag%GetG(Nomega,Omega,G)
       goto 101
     endif
 

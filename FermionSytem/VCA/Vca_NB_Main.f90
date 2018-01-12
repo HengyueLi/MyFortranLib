@@ -51,6 +51,7 @@
 ! avalable gets:
 !                   [fun] GetOverLapCPTH()
 !                         reutrn a type(LH)::GetOverLapCPTH in which both H and dH have been considered.
+!                         In the returned GetOverLapCPTH, meanfiled is also set.
 !                         used for CPT calculation.
 !
 !                   [fun] GetEDPA()
@@ -338,8 +339,21 @@ contains
     class(VCANB),intent(inout)::self
     type(LH)::r
     !-----------------------------------
+    integer::spini,spinj
+    complex*16,allocatable::M(:,:)                          
     r = self%CPTH
     call r%AbsorbMeanFiled(self%DelH%GetIdataArray())
+    !-----------------
+    ! set Meanfiled
+    call r%SetMeanFieldState(.true.)
+    allocate(  M( self%LaCo%GetNs() , self%LaCo%GetNs()  )  )
+    do spini = 0 , 1
+      do spinj = 0 , 1
+         M = self%DelH%GetDelatMatrix(spini,spinj)
+         call r%SetMeanField(M,spini,spinj)
+      enddo
+    enddo
+    deallocate(m)
   endfunction
 
 

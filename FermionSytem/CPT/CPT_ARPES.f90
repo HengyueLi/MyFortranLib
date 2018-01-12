@@ -5,7 +5,7 @@
 ! TYPE  : MODULE
 ! NAME  : CPT_ARPES
 ! OBJECT: TYPE(ARPES)
-! USED  : CodeObject , GCE_CPT_para , CE_Green , CreateKspace , LatticeConfig , LaLatticeH
+! USED  : CodeObject , GCE_CPT_para , CE_Green , CreateKspace , LatticeConfig , LaLatticeH , class_numerical_method
 ! DATE  : 2017-12-27
 ! AUTHOR: hengyueli@gmail.com
 !--------------
@@ -30,14 +30,15 @@
 !
 !
 ! avalable gets:
+!                   [sub]
 !
-!                   [sub] GetReducedGkOmegaMatrix(spini,spinj,GpriMatrix,OrbitalList,Klist,Kstep,g)
+!
+!                   [sub] GetReducedGkOmegaMatrix(spini,spinj,GpriMatrix,OrbitalList,Karray,g)
 !                          integer,intent(in)::spini,spinj
 !                          complex*16,intent(in)::GpriMatrix(:,:,:)!(Nomega , self%ns,self%ns)
 !                          integer,intent(in)::OrbitalList(:)
-!                          real*8,intent(in)::Klist(:,:)           !klist(3,l)
-!                          integer,intent(in)::Kstep
-!                          complex*16,intent(out)::g(:,:)        ! g(Omega,nk= (len(klist)-1)*kstep   )
+!                          real*8,intent(in)::Karray(:,:)           !klist(3,l)   saving all k points
+!                          complex*16,intent(out)::g(:,:)        ! g(Omega,size(Karray,2)   )
 !                          !----------------------------------------------------------------------------
 !                          input:
 !                               GpriMatrix(No,ns,ns) to fix y data, and input Klist to fix x data
@@ -48,17 +49,50 @@
 !                                          └────┘         (Notice the order of Omega)
 !                                             k
 !
-!                   [sub] GetReducedGkOmegaMatrixbyGpara(spini,spinj,No,o1,o2,eta,OrbitalList,Klist,Kstep,g)
+!
+!                   [sub] GetReducedGkbyOmegaArrayAndKArray(spini,spinj,OmegaArray,KArray,OrbitalList,g)
+!                         see the detals of GetReducedGkOmegaMatrix, input OmegaArray directly.
+!
+!
+!
+!
+!                   [sub] GetReducedGkOmegaMatrixbyGpara(spini,spinj,No,o1,o2,eta,OrbitalList,Karray,g)
 !                         see the details of 'GetReducedGkOmegaMatrix'
 !                         the different is to Caluculate Gpri automatically.
 !
 !                   [sub] GetARPES_spectral_to_file(spini,spinj,No,o1,o2,eta,OrbitalList,Klist,Kstep,file)
 !                          integer,intent(in)::spini,spinj,No
 !                          real*8,intent(in)::o1,o2,eta
-!                          integer,intent(in)::OrbitalList(:)
+!                          integer,intent(in)::OrbitalList(:)  ! if one do not care orbital, input all orbitals.
 !                          real*8,intent(in)::Klist(:,:)           !klist(3,l)
 !                          integer,intent(in)::Kstep
 !                          character(*),intent(in)::file
+!
+!                   [sub] GetIntergrationOfGkInKpsace(spini,spinj,OmegaArray,nk3,OrbitalList,g)
+!                          implicit none
+!                          integer,intent(in)::spini,spinj
+!                          complex*16,intent(in)::OmegaArray(:)
+!                          integer,intent(in)::nk3(3)
+!                          integer,intent(in)::OrbitalList(:)
+!                          complex*16,intent(out)::g(Size(OmegaArray))
+!                          !--------------------------------------------------------------------
+!                          used to calculate total Spectral
+!
+!                   [sub]  Get_Lattic_Dos_to_file(self,spini,spinj,No,o1,o2,eta,OrbitalList,nk3,file)
+!                           implicit none
+!                            class(ARPES),intent(inout) :: Self
+!                            integer,intent(in)::spini,spinj,No
+!                            real*8,intent(in)::o1,o2,eta
+!                            integer,intent(in)::OrbitalList(:)
+!                            integer,intent(in)::nk3(3)
+!                            character(*),intent(in)::file
+!                          !--------------------------------------------------------------------
+!                           calculate lattice dos and output to file.
+!
+!                   [sub] Get_K_DOS_to_file(self,spini,spinj,No,o1,o2,eta,OrbitalList,k,file)
+!                         calculate the DOS at one K point.
+!
+!
 !
 ! avalable is :
 !                  ![fun] i
@@ -78,6 +112,7 @@ module CPT_ARPES
   use CreateKspace
   use LatticeConfig
   use LaLatticeH
+  use class_numerical_method
   implicit none
 
 
@@ -88,9 +123,6 @@ module CPT_ARPES
     class(lh),pointer           :: CPTh     => null()
     class(LaCon),pointer        :: lattice  => null()
     type(CEG)                   :: GreenFun
-    ! class(GreenPara)            :: Gp
-    type(Kspace)                :: pcKs           ! choose prH basis.
-
 
     !-----------------------
     integer::ns
@@ -100,15 +132,19 @@ module CPT_ARPES
     procedure,pass::GetReducedGkOmegaMatrix
     procedure,pass::GetReducedGkOmegaMatrixbyGpara
     procedure,pass::GetARPES_spectral_to_file
+    procedure,pass::Get_Lattic_Dos_to_file
+    procedure,pass::Get_K_DOS_to_file
 
   endtype
 
 
   private::Initialization
-  private::GetAkMatrixFile,GetGkMatrixbyG,GetContractedGk,Get_ARPES_K_Points
-  private::GetReducedGkOmegaMatrixbyGpara,GetReducedGkOmegaMatrix
+  private::GetGkMatrixbyGinvs,GetContractedGk,Get_ARPES_K_Points
+  private::GetReducedGkOmegaMatrix
+  private::GetReducedGkOmegaMatrixbyGpara
   private::GetARPES_spectral_to_file
-
+  private::Get_Lattic_Dos_to_file
+  private::Get_K_DOS_to_file
 
 contains
 
@@ -140,40 +176,32 @@ contains
 
   endsubroutine
 
-  Subroutine GetAkMatrixFile(self,SpinI,SpinJ,o1,o2,No,eta,NKstep,Klist)
-    implicit none
-    class(ARPES),intent(inout) :: self
-    integer,intent(in):: SpinI,SpinJ
-    real*8,intent(in) :: o1,o2,eta
-    integer,intent(in):: No,NKstep
-    real*8,intent(in) :: Klist(:,:) ! Klist(3,N)
-    !-------------------------------------------------------------
-    integer::jc
-    complex*16::Omega(No),G(No,self%ns,self%ns)
 
-
-    !-------------------------------------------------------------
-    ! Get Omega list
-     do jc = 1 , No
-      Omega(jc) = o1 + (o2-o1)/No * (jc-1) + ( 0._8 , 1.0_8 ) * eta
-     enddo
-    !-------------------------------------------------------------
-    ! Get G matrix
-    call self%GreenFun%GetGreenMatrix(spini,spinj,NO,Omega,G)
-    !-------------------------------------------------------------
-
-  endsubroutine
-
-
-  Subroutine GetGkMatrixbyG(self,Gmatrix,spini,spinj,k,Gk)
+  Subroutine GetGkMatrixbyGinvs(self,GInvsMatrix,spini,spinj,k,Gk)
     implicit none
     class(ARPES),intent(inout) :: Self
-    complex*16,intent(in)      :: Gmatrix(self%ns,self%ns)
+    complex*16,intent(in)      :: GInvsMatrix(self%ns,self%ns)
     integer,intent(in)         :: spini,spinj
     real*8,intent(in)          :: k(3)
     complex*16,intent(out)     :: Gk(self%ns,self%ns)
     !-------------------------------------------------------------
-    Gk = Gmatrix - self%CPTh%GetTqMatrix(k,spini,spinj)
+    TYPE(nummethod)::f                                            ! ;integer::jc1,jc2;complex*16::m(4,4)
+
+    Gk = GInvsMatrix - self%CPTh%GetTqMatrix(k,spini,spinj)
+    if (self%CPTh%GetMeanFieldState())then
+       Gk = Gk + self%CPTh%GetMeanField(spini,spinj)
+                                                                ! m = self%CPTh%GetMeanField(spini,spinj)
+                                                                ! do jc1=1,4;do jc2=1,4
+                                                                !    write(*,*)jc1,jc2,real(m(jc1,jc2))
+                                                                !  enddo;enddo
+                                                                !  stop
+
+
+
+
+
+    endif
+    call f%MatrixInverse(self%ns,gk)
   endsubroutine
 
 
@@ -200,7 +228,7 @@ contains
       ISbelo2 = belongs(self%lattice%GetOrbitIndex(jc2),Nllist,OrbitalList)
       if ( ISbelo1 .and. ISbelo2 )then
         expkx=zexp(sum((self%lattice%GetSiteRealP(jc2)-self%lattice%GetSiteRealP(jc1))* k)*(0._8,1._8))
-        gk = gk  +  expkx * GKm(jc1,jc2)
+        gk = gk  +  GKm(jc1,jc2) * expkx
       endif
     enddo                  ;  enddo
     gk = gk / self%Ns
@@ -259,59 +287,78 @@ contains
       real*8::x,dx
       dx = 1._8/nk
       do jc = 1 , nk
-         x = (jc - 1) * dx + dx/2
+         x = (jc - 1) * dx! + dx/2
          kl(:,jc) = k1 + (k2 - k1) * x
       enddo
     endsubroutine
   endsubroutine
 
-  subroutine GetReducedGkOmegaMatrix(self,spini,spinj,GpriMatrix,OrbitalList,Klist,Kstep,g)
+
+
+  subroutine GetReducedGkOmegaMatrix(self,spini,spinj,GpriInvsMatrix,OrbitalList,Karray,g)
     implicit none
     class(ARPES),intent(inout) :: Self
     integer,intent(in)::spini,spinj
-    complex*16,intent(in)::GpriMatrix(:,:,:)!(Nomega , self%ns,self%ns)
+    complex*16,intent(in)::GpriInvsMatrix(:,:,:)!(Nomega , self%ns,self%ns)
     integer,intent(in)::OrbitalList(:)
-    real*8,intent(in)::Klist(:,:)           !klist(3,l)
-    integer,intent(in)::Kstep
+    real*8,intent(in)::Karray(:,:)           !klist(3,l)
     complex*16,intent(out)::g(:,:)        ! g(Omega,nk= (len(klist)-1)*kstep   )
     !--------------------------------------------------------------------------------------
-    integer::Nk,jc,jc1,No
-    real*8,allocatable::AllKpoints(:,:)
-    complex*16::tempg( size( GpriMatrix,1  )   ),Gt1(Self%ns,self%ns),Gk1(Self%ns,self%ns)
+    integer::jc,jc1
+    complex*16::tempg( size( GpriInvsMatrix,1  )   ),Gt1(Self%ns,self%ns),Gk1(Self%ns,self%ns)
     real*8::k(3)
 
-    NK = ( size(klist,2) - 1 ) * Kstep
-    No = size( GpriMatrix,1  )
-
-    Allocate( AllKpoints(3,nk) )
-
-    Call Get_ARPES_K_Points(self,Klist,Kstep,AllKpoints)
-
-    do jc = 1 , nk
-      k = AllKpoints(:,jc)
-      do jc1 = 1 , No
-        Gt1 = GpriMatrix(jc1,:,:)
-        call GetGkMatrixbyG(self,Gmatrix=Gt1,spini=spini,spinj=spinj,k=k,Gk=gk1)
+    do jc = 1 , size(Karray,2)
+      k = Karray(:,jc)
+      do jc1 = 1 , size( GpriInvsMatrix,1  )
+        Gt1 = GpriInvsMatrix(jc1,:,:)
+        call GetGkMatrixbyGinvs(self,GInvsMatrix=Gt1,spini=spini,spinj=spinj,k=k,Gk=gk1)
         g(jc1,jc) = GetContractedGk(self,GKm=gk1,k=k,OrbitalList=OrbitalList)
       enddo
     enddo
 
-    deallocate(AllKpoints)
   endsubroutine
 
 
-  Subroutine GetReducedGkOmegaMatrixbyGpara(self,spini,spinj,No,o1,o2,eta,OrbitalList,Klist,Kstep,g)
+
+  subroutine GetReducedGkbyOmegaArrayAndKArray(self,spini,spinj,OmegaArray,KArray,OrbitalList,g)
+    implicit none
+    class(ARPES),intent(inout) :: Self
+    integer,intent(in)::spini,spinj
+    complex*16,intent(in)::OmegaARRAY(:)!(Nomega)
+    real*8,intent(in)::Karray(:,:)     !Karray(3,l)
+    integer,intent(in)::OrbitalList(:)
+    complex*16,intent(out)::g(:,:)        ! g(Omega,nk= (len(klist)-1)*kstep   )
+    !--------------------------------------------------------------------------------------
+    integer::jc
+    complex*16::Gt(Self%ns,self%ns)
+    complex*16::GpriInvs(size(OmegaArray),self%ns,self%ns)
+    TYPE(nummethod)::f
+
+    call self%GreenFun%GetGreenMatrix(spini,spinj,Size(OmegaArray),OmegaArray,GpriInvs)
+    do jc = 1 , size(OmegaArray)
+      Gt = GpriInvs(jc,:,:)
+      call f%MatrixInverse(self%ns,Gt)
+      GpriInvs(jc,:,:)  = gt
+    enddo
+
+   call GetReducedGkOmegaMatrix(self,spini,spinj,GpriInvs,OrbitalList,Karray,g)
+  endsubroutine
+
+
+
+  Subroutine GetReducedGkOmegaMatrixbyGpara(self,spini,spinj,No,o1,o2,eta,OrbitalList,Karray,g)
     implicit none
     class(ARPES),intent(inout) :: Self
     integer,intent(in)::spini,spinj,No
     real*8,intent(in)::o1,o2,eta
     integer,intent(in)::OrbitalList(:)
-    real*8,intent(in)::Klist(:,:)           !klist(3,l)
-    integer,intent(in)::Kstep
-    complex*16,intent(out)::g(No,   Kstep* (size( Klist,2 ) - 1) )        ! g(Omega,nk= (len(klist)-1)*kstep   )
+    real*8,intent(in)::Karray(:,:)           !klist(3,l)
+    complex*16,intent(out)::g(No,   size(karray,2) )        ! g(Omega,nk= (len(klist)-1)*kstep   )
     !--------------------------------------------------------------------------------------
     integer::jc
-    complex*16::Omega(No),Gpri(No,self%ns,self%ns)
+    complex*16::Omega(No),GpriInvs(No,self%ns,self%ns),Gt(self%ns,self%ns)
+    TYPE(nummethod)::f
 
     Call self%CheckInitiatedOrStop()
     !-------------------------------------------------------------
@@ -320,10 +367,7 @@ contains
       Omega(jc) = o1 + (o2-o1)/No * (jc-1) + ( 0._8 , 1.0_8 ) * eta
     enddo
     !-------------------------------------------------------------
-    ! Get G matrix
-    call self%GreenFun%GetGreenMatrix(spini,spinj,NO,Omega,Gpri)
-    !-------------------------------------------------------------
-    Call GetReducedGkOmegaMatrix(self,spini,spinj,Gpri,OrbitalList,Klist,Kstep,g)
+   call GetReducedGkbyOmegaArrayAndKArray(self,spini,spinj,Omega,KArray,OrbitalList,g)
   endsubroutine
 
 
@@ -339,13 +383,17 @@ contains
     !--------------------------------------------------------------------------------------
     real*8,parameter::pi = 3.141592653589793238462643383279502884_8
     complex*16::g(No,   Kstep* (size( Klist,2 ) - 1) )
-    integer::jc1,Nk
+    real*8::KArray(3,  Kstep* (size( Klist,2 ) - 1)   )
+    integer::jc1
     character(32)::Nkc
     character(128)::form
 
-    call GetReducedGkOmegaMatrixbyGpara(self,spini,spinj,No,o1,o2,eta,OrbitalList,Klist,Kstep,g)
-    Nk = Kstep* (size( Klist,2 ) - 1)
-    write(Nkc,*)nk
+    !---------------------------------------------------------------------------
+    ! get All K points from Klist
+    Call Get_ARPES_K_Points(self,Klist,Kstep,KArray)               !;write(*,*)KArray
+
+    call GetReducedGkOmegaMatrixbyGpara(self,spini,spinj,No,o1,o2,eta,OrbitalList,KArray,g)
+    write(Nkc,*)Kstep* (size( Klist,2 ) - 1)
     form = "("//trim(adjustl(Nkc))//"ES22.14)"
     open(9541,file=trim(adjustl(file)))
     do jc1 = No , 1 , -1
@@ -354,13 +402,95 @@ contains
     close(9541)
   endsubroutine
 
+  subroutine GetIntergrationOfGkInKpsace(self,spini,spinj,OmegaArray,nk3,OrbitalList,g)
+    implicit none
+    class(ARPES),intent(inout) :: Self
+    integer,intent(in)::spini,spinj
+    complex*16,intent(in)::OmegaArray(:)
+    integer,intent(in)::nk3(3)
+    integer,intent(in)::OrbitalList(:)
+    complex*16,intent(out)::g(Size(OmegaArray))
+    !--------------------------------------------------------------------
+    type(Kspace) :: Ks
+    real*8,allocatable::KArray(:,:),Wk(:)
+    integer::jc
+    complex*16,allocatable::gmatrix(:,:)
+
+    call Ks%Initialization( a= self%lattice%GetVp(), n=nk3 ,meshtype=1,print_=self%getprint() )
+    allocate( KArray( 3,ks%getnk() )  ,  Wk(ks%getnk())  ,  gmatrix(Size(OmegaArray),ks%getnk()) )
+    do jc = 1 , ks%getnk()
+      Karray(:,jc) = ks%getk(jc)
+      wk(jc)       = ks%getw(jc)
+    enddo
+
+    call GetReducedGkbyOmegaArrayAndKArray(self,spini,spinj,OmegaArray,KArray,OrbitalList,gmatrix)
+    g = (0._8,0._8)
+    do jc = 1 , ks%getnk()
+       g = g + gmatrix(:,jc) * wk(jc)
+    enddo
+    deallocate( KArray  ,  Wk,  gmatrix )
+  endsubroutine
+
+  subroutine Get_Lattic_Dos_to_file(self,spini,spinj,No,o1,o2,eta,OrbitalList,nk3,file)
+    implicit none
+    class(ARPES),intent(inout) :: Self
+    integer,intent(in)::spini,spinj,No
+    real*8,intent(in)::o1,o2,eta
+    integer,intent(in)::OrbitalList(:)
+    integer,intent(in)::nk3(3)
+    character(*),intent(in)::file
+    !--------------------------------------------------------------------------------------
+    real*8,parameter::pi = 3.141592653589793238462643383279502884_8
+    integer::jc
+    complex*16::g(NO),omega(no)
+
+    !-------------------------------------------------------------
+    ! Get Omega list
+     do jc = 1 , No
+      Omega(jc) = o1 + (o2-o1)/No * (jc-1) + ( 0._8 , 1.0_8 ) * eta
+    enddo
+    !-------------------------------------------------------------
+    call GetIntergrationOfGkInKpsace(self,spini,spinj,Omega,nk3,OrbitalList,g)
+
+    open(9541,file=trim(adjustl(file)))
+    do jc = 1,no
+       write(9541,*)real(omega(jc)) , -imag(g(jc))/pi
+    enddo
+    close(9541)
+  endsubroutine
 
 
-
-
-
-
-
+  subroutine Get_K_DOS_to_file(self,spini,spinj,No,o1,o2,eta,OrbitalList,k,file)
+    implicit none
+    class(ARPES),intent(inout) :: Self
+    integer,intent(in)::spini,spinj,No
+    real*8,intent(in)::o1,o2,eta
+    integer,intent(in)::OrbitalList(:)
+    real*8,intent(in)::k(3)
+    character(*),intent(in)::file
+    !--------------------------------------------------------------------------------------
+    real*8,parameter::pi=3.141592653589793238462643383279_8
+    TYPE(nummethod)::f
+    complex*16::g(NO),omega(no)
+    complex*16::GpriInvs(No,self%ns,self%ns),Gt(self%ns,self%ns),gt2(self%ns,self%ns)
+    integer::jc
+    !-------------------------------------------------------------
+    ! Get Omega list
+     do jc = 1 , No
+      Omega(jc) = o1 + (o2-o1)/No * (jc-1) + ( 0._8 , 1.0_8 ) * eta
+    enddo
+    !-------------------------------------------------------------
+    call self%GreenFun%GetGreenMatrix(spini,spinj,No,Omega,GpriInvs)
+    open(200,file=trim(adjustl(file)))
+    do jc = 1 , no
+      Gt = GpriInvs(jc,:,:)
+      call f%MatrixInverse(self%ns,Gt)
+      call GetGkMatrixbyGinvs(self,Gt,spini,spinj,k,Gt2)
+      g(jc) = GetContractedGk(self,Gt2,k,OrbitalList)
+      write(200,*)real(omega(jc)),-imag(g(jc))/pi
+    enddo
+    close(200)
+  endsubroutine
 
 
 

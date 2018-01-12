@@ -36,7 +36,7 @@
 !                         integer::GetNs system site.
 !
 !                   [fun] GetSolverType()
-!                         character(2)::GetSolverType
+!                         character(*)::GetSolverType
 !
 !                   [fun] GerEDpara()
 !                         return  type(SolverPara)
@@ -308,7 +308,7 @@ contains
     ! GetRZ = self%ed%GetRz()
     !-----------------------------------------------
     if (self%Spara%SvType==self%Spara%EDGCE)then
-        GetRZ = self%ed%GetRz()   
+        GetRZ = self%ed%GetRz()
         goto 101
     endif
     !-----------------------------------------------
@@ -385,12 +385,13 @@ contains
 
 
 
-  character(2) function GetSolverType(self)
+  function GetSolverType(self) result(r)
     implicit none
     class(CES),intent(inout)::self
+    character(len=len(self%Spara%SvType))::r
     !-------------------------------------
     call self%CheckInitiatedOrStop()
-    GetSolverType = self%Spara%SvType
+    r = self%Spara%SvType
   endfunction
 
 

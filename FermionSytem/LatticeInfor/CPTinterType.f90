@@ -87,6 +87,7 @@ contains
   !     "SpinOnSite"  ,  "OnSite"  ,  "SpinHopping"  ,  "Hopping"
   !     ]
   !  logcal::IsLocal  ->  put on the conjugate term.
+  !   1 - basis
   subroutine SetIntoMatix(data,ns,Matrix,spini,spinj,IsLocal)
     use functionalsubs
     implicit none
@@ -135,17 +136,10 @@ contains
     class(idata),intent(inout) :: self
     class(Ham),intent(inout)::H
     !---------------------------------
-    Integer::para(8)                                     !;integer,save::PP = 0
+    Integer::para(8)
     para = self%Para
-    para(1:2) = para(1:2) - 1
+    para(1:2) = para(1:2) - 1                    ! para(1:2) are site index. Spin is not changed.
     call H%AppendingInteraction(  self%Itype  , Para , self%v)
-
-                                                            !  pp = pp + 1
-                                                            ! ;write(*,*)pp
-                                                            ! write(*,*)"type=",self%Itype
-                                                            ! write(*,*)"para=",para(1:6)
-                                                            ! write(*,*)"v=",self%v
-
   endsubroutine
 
 

@@ -113,7 +113,7 @@
 !                         return real*8
 !                         character(32)::discription
 !
-!                   [fun] GetDelatMatrix(spini,spinj)
+!                   [fun] GetDelatMatrix(spini,spinj)     ! spin is 0-basis
 !                         complex*16::GetDelatMatrix(ns,ns)
 !
 !                   [fun] GetDeltaMatrixSpinSupp()
@@ -569,7 +569,7 @@ endsubroutine
     integer::n
     call GetTotalIdataArray(self,idataarray,n)
     allocate(r(n))
-    r = idataarray(1:n)                            
+    r = idataarray(1:n)
   endfunction
 
 
