@@ -28,8 +28,8 @@
 !
 !
 ! avalable sets:
-!                  [sub] Initialization(N,Itype)
-!                        integer::N,Itype
+!                  [sub] Initialization(N,typecase)
+!                        integer::N,typecase
 !
 !                  [sub] get_xw(xs,xe,x,w)
 !

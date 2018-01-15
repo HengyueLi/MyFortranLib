@@ -41,6 +41,9 @@
 !                   [fun] GetLatticePointer()
 !                         return class(LaCon)
 !
+!                   [fun] GetTemperature()
+!
+!
 !
 ! avalable is :
 !                  ![fun] i
@@ -77,6 +80,7 @@ module GCE_CPT_para
     procedure,pass::ReportPara
     procedure,pass::GetCPTHpointer
     procedure,pass::GetLatticePointer
+    procedure,pass::GetTemperature
 
   endtype
 
@@ -85,6 +89,7 @@ module GCE_CPT_para
   private::ReportPara
   private::GetCPTHpointer
   private::GetLatticePointer
+  private::GetTemperature
 
 
 
@@ -171,6 +176,14 @@ contains
       !----------------------------------------
       call self%CheckInitiatedOrStop()
       r => self%CPTH%GetLatticeConfigPointer()
+    endfunction
+
+
+    real*8 function GetTemperature(self)
+      implicit none
+      class(GCECPTpara),intent(in)::self
+      !---------------------------------------
+      GetTemperature = self%solver%GetTemperature()
     endfunction
 
 

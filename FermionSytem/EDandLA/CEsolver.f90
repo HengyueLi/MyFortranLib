@@ -38,6 +38,9 @@
 !                   [fun] GetSolverType()
 !                         character(*)::GetSolverType
 !
+!                   [fun] GetTemperature()
+!
+!
 !                   [fun] GerEDpara()
 !                         return  type(SolverPara)
 !
@@ -141,6 +144,7 @@ Module CEsolver
     procedure,pass::GetGrandPotential
     procedure,pass::GetSymmetry
     procedure,pass::GerEDpara
+    procedure,pass::GetTemperature
   endtype
 
 
@@ -159,7 +163,9 @@ Module CEsolver
   private::GetGrandPotential
   private::GetSymmetry
   private::GerEDpara
+  private::GetTemperature
 contains
+
 
 
 
@@ -448,6 +454,18 @@ contains
     !-------------------------------------
     GerEDpara = self%Spara
   endfunction
+
+
+
+  real*8 function GetTemperature(self)
+    use functionalsubs
+    implicit none
+    class(CES),intent(in) :: self
+    !--------------------------------------
+    GetTemperature = self%Spara%Temperature
+  endfunction
+
+
 
 
 

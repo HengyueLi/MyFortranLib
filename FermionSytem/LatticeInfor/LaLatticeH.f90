@@ -53,6 +53,9 @@
 !                   [fun] GetVp()
 !                         return PC basis
 !
+!                   [fun] GetVbasis()
+!                         real*8::GetVbasis(3,3)  the basis of LC.
+!
 !                   [fun] GetNnearLC()
 !                         total number of connected LC.
 !
@@ -80,9 +83,6 @@
 !                   [fun] GetSpinSuppresedTq(q)
 !                         2ns X 2ns matrix where both spin have been contained.
 !
-!                   [fun] GetVbasis()
-!                         real*8::GetVbasis(3,3)  the basis of LC.
-!
 !                   [fun] GetLatticeConfigPointer()
 !                         return class(LaCon)   lattice configration
 !
@@ -91,6 +91,19 @@
 !
 !                   [fun] GetMeanFieldState()
 !                         logical
+!
+!                   [fun] GetVelocityOneCluster(q,spini,spinj,xy,i)  result(r)! i = [0,self%GetNnearLC()]
+!                          class(LH),intent(inout) :: self
+!                          real*8,intent(in)       :: q(3)
+!                          integer,intent(in)      :: spini,spinj,xy,i
+!                          complex*16              :: r(self%Ns,self%Ns)
+!
+!                          r = -   ( T_R * exp(i q R) * (  R - X   )     )
+!                          R is the cluster position, X is ri-rj in the cluster.
+!
+!                   [fun] GetVelocityMatrix(q,spini,spinj,xy)
+!                         see  'GetVelocityOneCluster'. All the near connected clusters are sumed.
+!
 !
 !
 !
@@ -157,7 +170,10 @@ module LaLatticeH
     ! for other, VCA and DMFT, we have this term.
     logical::HaveMeanFiled
     complex*16,allocatable::DeltaM(:,:,:,:) !   (ns,ns,0:1,0:1) the later two are spin index.
-
+    !-------------------------------------------------
+    !  used for velocity matrix
+    real*8,allocatable :: DeltaX(:,:,:)     ! (ns,ns,3)
+    !
   CONTAINS
     procedure,pass::Initialization
     final::Finalization
@@ -182,6 +198,8 @@ module LaLatticeH
     procedure,pass::SetMeanField
     procedure,pass::GetMeanField
     procedure,pass::GetMeanFieldState
+    procedure,pass::GetVelocityOneCluster
+    procedure,pass::GetVelocityMatrix
   endtype
 
 
@@ -209,6 +227,8 @@ module LaLatticeH
   private::GetVp
   private::GetLatticeConfigPointer
   private::SetMeanFieldState,SetMeanField,getMeanField,GetMeanFieldState
+  private::GetVelocityOneCluster
+  private::GetVelocityMatrix
 
 contains
 
@@ -222,6 +242,7 @@ contains
     class(LaCon),target,intent(in):: Lac
     integer,intent(in),optional   :: print_,show_
     !----------------------------------------------
+    integer::jc1,jc2
     call Finalization(self)
     call self%SetInitiated(.true.)
     if (present(print_)) call self%SetPrint(print_ )
@@ -251,6 +272,16 @@ contains
     !----------------------------
     self%HaveMeanFiled = .false.
     allocate(self%DeltaM(self%Ns,self%Ns,0:1,0:1))
+    self%DeltaM = (0._8,0._8)
+    !---------------------------------------------------
+    ! velocity matrix
+    allocate(self%DeltaX(self%ns,self%ns,3))
+    do jc1= 1 , self%ns
+      do jc2 = 1 , self%ns
+         self%DeltaX(jc1,jc2,:) = self%LaC%GetSiteRealP(jc1) - self%LaC%GetSiteRealP(jc2)
+      enddo
+    enddo
+    !
   endsubroutine
 
   subroutine Finalization(self)
@@ -258,7 +289,7 @@ contains
     type(LH),intent(inout)::self
     !-----------------------------
     if (self%IsInitiated())then
-       deallocate(   self%Hin  , self%Hou   , self%DeltaM )
+       deallocate(   self%Hin  , self%Hou   , self%DeltaM , self%DeltaX )
        call self%SetInitiated( .false. )
     endif
   endsubroutine
@@ -805,6 +836,41 @@ contains
           complex*16::r(self%ns,self%ns)
           !---------------------------------------
           r = self%DeltaM(:,:,spini,spinj)
+        endfunction
+
+
+        function GetVelocityOneCluster(self,q,spini,spinj,xy,i)  result(r)! i = [0,self%GetNnearLC()]
+          implicit none
+          class(LH),intent(inout) :: self
+          real*8,intent(in)       :: q(3)
+          integer,intent(in)      :: spini,spinj,xy,i
+          complex*16              :: r(self%Ns,self%Ns)
+          !---------------------------------------------------------------------
+          real*8::CR(3),LoX(self%ns,self%ns)
+          integer::jc1,jc2
+          if (i==0)then
+            r  = self%GetLocalHMatix(spini,spinj) - self%getMeanField(spini,spinj)
+            CR = 0._8
+          else
+            r  = self%GetNearTexpMatrix(q,i,spini,spinj)
+            CR = self%LaposR(:,i)
+          endif
+          r = r * ( self%DeltaX(:,:,xy) - CR(xy) )
+        endfunction
+
+
+        function GetVelocityMatrix(self,q,spini,spinj,xy) result(r)
+          implicit none
+          class(LH),intent(inout) :: self
+          real*8,intent(in)       :: q(3)
+          integer,intent(in)      :: spini,spinj,xy
+          complex*16              :: r(self%Ns,self%Ns)
+          !---------------------------------------------------------------------
+          integer::jc
+          r = (0._8,0._8)
+          do jc = 0 , self%GetNnearLC()
+             r = r + GetVelocityOneCluster(self,q,spini,spinj,xy,jc)
+          enddo
         endfunction
 
 
