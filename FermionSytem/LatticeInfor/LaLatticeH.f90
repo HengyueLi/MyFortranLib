@@ -80,6 +80,13 @@
 !                   [fun] GetTqMatrix(q,spini,spinj)
 !                         summation of GetNearTexpMatrix,  this is Tq
 !
+!                   [fun] GetTqPrimatrix(q,spini,spinj)
+!                          real*8,intent(in)::q(3)
+!                          integer,intent(in)::spini,spinj
+!                          complex*16::r(self%ns,self%ns)
+!                          = Tq - Delta      where Tq is 'GetTqMatrix' and Delta is the local meanfiled
+!
+!
 !                   [fun] GetSpinSuppresedTq(q)
 !                         2ns X 2ns matrix where both spin have been contained.
 !
@@ -186,6 +193,7 @@ module LaLatticeH
     procedure,pass::SetValueByDiscription
     procedure,pass::GetLocalHMatix
     procedure,pass::GetTqMatrix
+    procedure,pass::GetTqPrimatrix
     procedure,pass::AppendLocalDataToHam
     procedure,pass::GetVbasis
     procedure,pass::GetSpinSuppresedTq
@@ -217,6 +225,7 @@ module LaLatticeH
   private::GetNearTMatix
   private::GetNearTexpMatrix
   private::GetTqMatrix
+  private::GetTqPrimatrix
   private::AppendLocalDataToHam
   private::GetVbasis
   private::GetSpinSuppresedTq
@@ -837,6 +846,23 @@ contains
           !---------------------------------------
           r = self%DeltaM(:,:,spini,spinj)
         endfunction
+
+
+
+
+        function GetTqPrimatrix(self,q,spini,spinj) result(r)
+          implicit none
+          class(LH),intent(inout) :: self
+          real*8,intent(in)::q(3)
+          integer,intent(in)::spini,spinj
+          complex*16::r(self%ns,self%ns)
+          !---------------------------------------
+          r = GetTqMatrix(self,q,spini,spinj) - self%DeltaM(:,:,spini,spinj)
+        endfunction
+
+
+
+
 
 
         function GetVelocityOneCluster(self,q,spini,spinj,xy,i)  result(r)! i = [0,self%GetNnearLC()]

@@ -5,7 +5,7 @@
 ! TYPE  : MODULE
 ! NAME  : GCE_CPT_para
 ! OBJECT: TYPE(GCECPTpara)
-! USED  : CodeObject , fermion_table , LaLatticeH , CEsolver , FermionHamiltonian
+! USED  : CodeObject , fermion_table , LaLatticeH , CEsolver , FermionHamiltonian , CE_Green
 ! DATE  : 2017-12-27
 ! AUTHOR: hengyueli@gmail.com
 !--------------
@@ -24,8 +24,9 @@
 !
 !
 ! avalable sets:
-!                   [sub] Initialization(edpara,cpth)
+!                   [sub] Initialization(edpara,Gpara,cpth)
 !                          class(SolverPara),intent(in)::edpara
+!                          class(GreenPara),intent(in) :: Gpara
 !                          class(lh),intent(in) ::cpth
 !
 !
@@ -34,6 +35,9 @@
 !
 !                   [fun] GetSolverPointer()
 !                         Class(CES),pointer::GetSolverPointer
+!
+!                   [fun] GetGp()
+!                         return Type(GreenPara)
 !
 !                   [fun] GetCPTHpointer()
 !                         class(lh)::CPTH
@@ -63,16 +67,18 @@ module GCE_CPT_para
   use fermion_table
   use LaLatticeH
   use CEsolver
+  use CE_Green
   use FermionHamiltonian
   implicit none
 
 
   type,extends(object)::GCECPTpara
     private
-    TYPE(LH)    :: CPTH
-    TYPE(table) :: Ta
-    TYPE(Ham)   :: SolverH
-    TYPE(CES)   :: solver
+    TYPE(LH)        :: CPTH
+    TYPE(table)     :: Ta
+    TYPE(Ham)       :: SolverH
+    TYPE(CES)       :: solver
+    Type(GreenPara) :: GP
 
   contains
     procedure,pass::Initialization
@@ -81,6 +87,7 @@ module GCE_CPT_para
     procedure,pass::GetCPTHpointer
     procedure,pass::GetLatticePointer
     procedure,pass::GetTemperature
+    procedure,pass::GetGp
 
   endtype
 
@@ -90,20 +97,23 @@ module GCE_CPT_para
   private::GetCPTHpointer
   private::GetLatticePointer
   private::GetTemperature
+  private::GetGp
 
 
 
 contains
 
 
-  subroutine Initialization(self,edpara,cpth)
+  subroutine Initialization(self,edpara,Gpara,cpth)
     implicit none
-    class(GCECPTpara),intent(inout)::self
-    class(SolverPara),intent(in)::edpara
-    class(lh),intent(in) ::cpth
+    class(GCECPTpara),intent(inout) :: self
+    class(SolverPara),intent(in)    :: edpara
+    class(GreenPara),intent(in)     :: Gpara
+    class(lh),intent(in)            :: cpth
     !----------------------------------------
     call self%SetInitiated(.True.)
 
+    self%gp = Gpara
     !--------------------------------------------------------------------
     ! set CPTH
     self%CPTH    = cpth
@@ -185,6 +195,14 @@ contains
       !---------------------------------------
       GetTemperature = self%solver%GetTemperature()
     endfunction
+
+    type(GreenPara) FUNCTION GetGp(self)
+      implicit none
+      class(GCECPTpara),intent(inout) :: self
+      !----------------------------------------
+      GetGp = self%GP
+    endfunction
+
 
 
 endmodule

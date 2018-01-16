@@ -105,7 +105,7 @@ contains
 
   subroutine Initialization(self,a,n,meshtype,print_,show_)
     implicit none
-    class(Kspace),intent(out)   :: self
+    class(Kspace),intent(inout) :: self
     real*8,intent(in)           :: a(3,3)
     integer,intent(in)          :: n(3)
     integer,intent(in)          :: meshtype

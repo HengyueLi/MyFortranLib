@@ -43,6 +43,13 @@
 !
 !                  [sub] LinuxMkdir(path)
 !                        make directory. If it is existed, delete it (recersively) first.
+!
+!                  [sub] IntegerReportProgress(wtp,Ntot,RecentI,PerStep,PrintStr)
+!                        integer:: wtp,Ntot,RecentI
+!                        real*8::PerStep \in (0,1)
+!                        character(*)::PrintStr
+!
+!
 ! avalable Is:
 !
 ! others:
@@ -69,10 +76,12 @@ module functionalsubs
         procedure,nopass::GetIntegerToCondenseSting
         procedure,nopass::ReportTime
         procedure,nopass::LinuxMkdir
+        procedure,nopass::IntegerReportProgress
     end type
 
     private::to_upper
     private::LinuxMkdir
+    private::IntegerReportProgress
 
     contains
 
@@ -173,6 +182,23 @@ character(64) function ReportTime(t)
     !            make it
     call system("mkdir "//trim(adjustl(path)))
   endsubroutine
+
+
+  subroutine IntegerReportProgress(wtp,Ntot,RecentI,PerStep,PrintStr)
+    implicit none
+    integer,intent(in)::wtp,Ntot,RecentI
+    real*8,intent(in)::PerStep
+    character(*),intent(in)::PrintStr
+    !--------------------------------------------
+    integer::D
+    D = int(Ntot * PerStep)
+    if (D==0) D=1
+    if (  mod(RecentI,D)==0  )then
+      write(wtp,*)trim(adjustl(PrintStr))
+    endif
+  endsubroutine
+
+
 
 
 

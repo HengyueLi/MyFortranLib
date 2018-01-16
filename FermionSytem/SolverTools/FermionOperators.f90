@@ -590,7 +590,9 @@ module FermionOperators
       !----------------------------------------
       if ((c.ge.0) .and.  (c.le.ns)  )then
       else
-         write(*,*)"In definition of operator, site out of rang.";stop
+         write(*,*)"In definition of operator, site out of rang."
+         write(*,*)"Found site=",c
+         stop
       endif
     endsubroutine
 
@@ -600,7 +602,9 @@ module FermionOperators
       !----------------------------------------
       if ((c==0) .or.  (c==1)  )then
       else
-         write(*,*)"In definition of operator, spin out of rang.";stop
+         write(*,*)"In definition of operator, spin out of rang."
+         write(*,*)"Found spin=",c
+         stop
       endif
     endsubroutine
 

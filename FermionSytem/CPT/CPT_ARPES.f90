@@ -23,9 +23,8 @@
 !
 !
 ! avalable sets:
-!                   [sub] Initialization(CPTpara,GP)
+!                   [sub] Initialization(CPTpara)
 !                          class(GCECPTpara),target    :: CPTpara
-!                          class(GreenPara),intent(in) :: GP
 !
 !
 !
@@ -149,11 +148,10 @@ module CPT_ARPES
 contains
 
 
-  subroutine Initialization(self  ,CPTpara,GP)
+  subroutine Initialization(self  ,CPTpara)
     implicit none
     class(ARPES),intent(out)    :: self
     class(GCECPTpara),target    :: CPTpara
-    class(GreenPara),intent(in) :: GP
     ! integer,intent(in)          :: nk(3)
     !-----------------------------------------
     call self%SetInitiated(.true.)
@@ -163,7 +161,7 @@ contains
     !---------------------------------------------------------------------------
     ! Green function
     call self%GreenFun%Initialization( solver = self%CPT%GetSolverPointer() ,&
-                                                GP = GP,PRINT_=self%getprint() )
+                                                GP = self%CPT%getGP(),PRINT_=self%getprint() )
     !---------------------------------------------------------------------------
     ! PC k-space
     ! call self%pcKs%Initialization( a= self%lattice%GetVp(), n=nk ,meshtype=1,print_=self%getprint() )
@@ -185,22 +183,8 @@ contains
     real*8,intent(in)          :: k(3)
     complex*16,intent(out)     :: Gk(self%ns,self%ns)
     !-------------------------------------------------------------
-    TYPE(nummethod)::f                                            ! ;integer::jc1,jc2;complex*16::m(4,4)
-
-    Gk = GInvsMatrix - self%CPTh%GetTqMatrix(k,spini,spinj)
-    if (self%CPTh%GetMeanFieldState())then
-       Gk = Gk + self%CPTh%GetMeanField(spini,spinj)
-                                                                ! m = self%CPTh%GetMeanField(spini,spinj)
-                                                                ! do jc1=1,4;do jc2=1,4
-                                                                !    write(*,*)jc1,jc2,real(m(jc1,jc2))
-                                                                !  enddo;enddo
-                                                                !  stop
-
-
-
-
-
-    endif
+    TYPE(nummethod)::f                                      
+     Gk = GInvsMatrix - self%CPTh%GetTqPrimatrix(k,spini,spinj)
     call f%MatrixInverse(self%ns,gk)
   endsubroutine
 
@@ -405,18 +389,20 @@ contains
   subroutine GetIntergrationOfGkInKpsace(self,spini,spinj,OmegaArray,nk3,OrbitalList,g)
     implicit none
     class(ARPES),intent(inout) :: Self
-    integer,intent(in)::spini,spinj
-    complex*16,intent(in)::OmegaArray(:)
-    integer,intent(in)::nk3(3)
-    integer,intent(in)::OrbitalList(:)
-    complex*16,intent(out)::g(Size(OmegaArray))
+    integer,intent(in)         :: spini,spinj
+    complex*16,intent(in)      :: OmegaArray(:)
+    integer,intent(in)         :: nk3(3)
+    integer,intent(in)         :: OrbitalList(:)
+    complex*16,intent(out)     :: g(Size(OmegaArray))
     !--------------------------------------------------------------------
     type(Kspace) :: Ks
     real*8,allocatable::KArray(:,:),Wk(:)
     integer::jc
     complex*16,allocatable::gmatrix(:,:)
+    real*8::aLC(3,3)
 
-    call Ks%Initialization( a= self%lattice%GetVp(), n=nk3 ,meshtype=1,print_=self%getprint() )
+    aLC = self%lattice%GetVp()
+    call Ks%Initialization( a= aLC, n=nk3 ,meshtype=1,print_=self%getprint() )
     allocate( KArray( 3,ks%getnk() )  ,  Wk(ks%getnk())  ,  gmatrix(Size(OmegaArray),ks%getnk()) )
     do jc = 1 , ks%getnk()
       Karray(:,jc) = ks%getk(jc)
