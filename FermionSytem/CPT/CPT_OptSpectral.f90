@@ -6,7 +6,7 @@
 ! NAME  : CPT_OptSpectral
 ! OBJECT: TYPE(cptopt1)
 ! USED  : CodeObject , class_integration , GCE_CPT_para , CE_Green , LaLatticeH , CreateKspace , phyfunc , class_numerical_method,functionalsubs
-! DATE  : 2018-01-05
+! DATE  : 2018-01-16
 ! AUTHOR: hengyueli@gmail.com
 !--------------
 ! Open-Source : No
@@ -386,7 +386,7 @@ contains
 
     open(1234,file=trim(adjustl(file)))
     do jc = 1 , Nomega
-      write(1234,*)real(omega(jc)),-imag(Bo(jc))/(real(OMega(jc)) + Tiny )/self%ns
+      write(1234,*)real(omega(jc)),-imag(Bo(jc))/(real(OMega(jc)) + Tiny )/self%ns     
     enddo
     close(1234)
 
