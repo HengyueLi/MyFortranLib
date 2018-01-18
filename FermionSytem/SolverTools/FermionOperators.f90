@@ -86,7 +86,8 @@
 !
 ! avalable others:
 !                  [sub] self%act(Bin,Bout,sign)
-!                        integer(8)::Bin(2),Bout(2),sign
+!                        integer*8::Bin(2),Bout(2)
+!                        integer::sign
 !                       Bin is the input basis, Bout is the output basis, sign= 1 / -1 is the correpsonding sign.
 !
 !

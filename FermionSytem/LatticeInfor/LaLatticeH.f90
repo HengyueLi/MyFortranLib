@@ -111,7 +111,9 @@
 !                   [fun] GetVelocityMatrix(q,spini,spinj,xy)
 !                         see  'GetVelocityOneCluster'. All the near connected clusters are sumed.
 !
-!
+!                   [fun] GetLocalVelocity_MeanfieldContained(spini,spinj,xy)
+!                          integer,intent(in)      :: spini,spinj,xy
+!                          complex*16              :: r(self%Ns,self%Ns)
 !
 !
 ! avalable is :
@@ -208,6 +210,7 @@ module LaLatticeH
     procedure,pass::GetMeanFieldState
     procedure,pass::GetVelocityOneCluster
     procedure,pass::GetVelocityMatrix
+    procedure,pass::GetLocalVelocity_MeanfieldContained
   endtype
 
 
@@ -238,6 +241,7 @@ module LaLatticeH
   private::SetMeanFieldState,SetMeanField,getMeanField,GetMeanFieldState
   private::GetVelocityOneCluster
   private::GetVelocityMatrix
+  private::GetLocalVelocity_MeanfieldContained
 
 contains
 
@@ -883,6 +887,21 @@ contains
           endif
           r = r * ( self%DeltaX(:,:,xy) - CR(xy) )
         endfunction
+
+
+
+        function GetLocalVelocity_MeanfieldContained(self,spini,spinj,xy)  result(r)! i = [0,self%GetNnearLC()]
+          implicit none
+          class(LH),intent(inout) :: self
+          integer,intent(in)      :: spini,spinj,xy
+          complex*16              :: r(self%Ns,self%Ns)
+          !---------------------------------------------------------------------
+          real*8::CR(3),LoX(self%ns,self%ns)
+          integer::jc1,jc2
+          r  = self%GetLocalHMatix(spini,spinj)
+          r = r * self%DeltaX(:,:,xy)
+        endfunction
+
 
 
         function GetVelocityMatrix(self,q,spini,spinj,xy) result(r)

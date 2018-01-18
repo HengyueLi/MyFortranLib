@@ -70,12 +70,13 @@
 !                          complex*16,intent(out)        :: B0xy(:)
 !                          calculate the bubble approximation of jj correlation.
 !
-!                   [sub] GetOpticalSigmaXYTofile(x,y,Nomega,o1,o2,eta,file)
+!                   [sub] GetOpticalSigmaXYTofile(factor,x,y,Nomega,o1,o2,eta,file)
+!                          real*8::factor
 !                          integer,intent(in)::x,y,Nomega
 !                          real*8,intent(in)::o1,o2,eta
 !                          character(*),intent(in)::file
-!                            here the factor pi/N is multiplied. (That's to say, sigma(w) is obtained,see detals above.)
-!
+!                          here the factor pi/N is multiplied. (That's to say, sigma(w) is obtained,see detals above.)
+!                          we can set a factor, this is simply multiplied to the final result. Do not waste any time.
 ! avalable is :
 !                  ![fun] i
 ! others      :
@@ -362,9 +363,10 @@ contains
   endsubroutine
 
 
-  subroutine GetOpticalSigmaXYTofile(self,x,y,Nomega,o1,o2,eta,file)
+  subroutine GetOpticalSigmaXYTofile(self,factor,x,y,Nomega,o1,o2,eta,file)
     implicit none
     class(cptopt1),intent(inout) :: self
+    real*8,intent(in)::factor
     integer,intent(in)::x,y,Nomega
     real*8,intent(in)::o1,o2,eta
     character(*),intent(in)::file
@@ -386,7 +388,7 @@ contains
 
     open(1234,file=trim(adjustl(file)))
     do jc = 1 , Nomega
-      write(1234,*)real(omega(jc)),-imag(Bo(jc))/(real(OMega(jc)) + Tiny )/self%ns     
+      write(1234,*)real(omega(jc)),-imag(Bo(jc))/(real(OMega(jc)) + Tiny )/self%ns *factor
     enddo
     close(1234)
 

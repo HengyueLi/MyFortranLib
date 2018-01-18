@@ -59,7 +59,7 @@
 !                  [fun] get_Vec(subid,i,d) ! get the eigen states
 !                        integer(8)::subid
 !                        integer(8)::i
-!                        real(8)::get_Vec(d) ! where d is the dimension of this subspace.
+!                        complex(8)::get_Vec(d) ! where d is the dimension of this subspace.
 !                  [fun] get_Eg()
 !                        get ground state energy
 !                  [fun] get_Nsub()
