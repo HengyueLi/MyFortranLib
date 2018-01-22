@@ -49,6 +49,14 @@
 ! avalable gets:
 !
 !                   [fun] GetLatticeOmegaPerSite()
+!                         Omega
+!
+!                   [fun] GetClusterOmegaPriPerSite()
+!                         Omega'
+!
+!                   [fun] GetLatticeIPerSite()
+!                         Omega = Omega' - I
+!                         return I
 !
 !
 ! avalable is :
@@ -241,6 +249,8 @@ module VCA_WaldFun
     final::Finalization
 
     procedure,pass::GetLatticeOmegaPerSite
+    procedure,pass::GetClusterOmegaPriPerSite
+    procedure,pass::GetLatticeIPerSite
   endtype
 
 
@@ -249,6 +259,8 @@ module VCA_WaldFun
   private::GetSavingGandGrandPotetial
   private::FuncF,GetVkMatrix,GetI,GetLatticeOmegaPerSite
   private::ReccorectI
+  private::GetClusterOmegaPriPerSite
+  private::GetLatticeIPerSite
 
 contains
 
@@ -520,6 +532,25 @@ contains
     call GetSavingGandGrandPotetial(self)
     GetLatticeOmegaPerSite = self%OmegaPri - GetI(self)            ! ;write(*,*)self%OmegaPri, GetI(self),666
     GetLatticeOmegaPerSite = GetLatticeOmegaPerSite / self%ns
+  endfunction
+
+  real*8 function GetClusterOmegaPriPerSite(self)
+    IMPLICIT NONE
+    class(waldf),intent(inout)  :: self
+    !--------------------------------------
+    call self%CheckInitiatedOrStop()
+    call GetSavingGandGrandPotetial(self)
+    GetClusterOmegaPriPerSite = self%OmegaPri / self%ns
+  endfunction
+
+
+  real*8 function GetLatticeIPerSite(self)
+    IMPLICIT NONE
+    class(waldf),intent(inout)  :: self
+    !--------------------------------------
+    call self%CheckInitiatedOrStop()
+    call GetSavingGandGrandPotetial(self)
+    GetLatticeIPerSite = GetI(self)/ self%ns
   endfunction
 
 

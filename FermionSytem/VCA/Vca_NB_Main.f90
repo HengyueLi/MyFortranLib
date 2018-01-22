@@ -72,7 +72,8 @@
 !                          the testing range is in [o-R,o+R] where o is the recent value.
 !
 !                          mode = 0 : Homoginouse distribution
-!                          mode = 1 :
+!                          mode = 1 : Weight sampling around stationary point.
+!                          mode = 2 : only check Omega'    (Omega = Omega' -I)
 !
 !
 !                   [sub] TestAllVariational(FolderPath,mode,rmode,R,N)
@@ -239,19 +240,22 @@ contains
   ! test a stationary point (on one direction.).
   ! the testing range is in [o-R,o+R] where o is the recent value.
   !
-  ! mode = 0 : Homoginouse distribution
-  ! mode = 1 :
+  ! mode = 0 :  (Omega)  Homoginouse distribution
+  ! mode = 1 :  (Omega)  weight sampling around stationary point
+  ! mode = 2 :  (Omega') Homoginouse distribution
+  ! mode = 3 :  (Omega') weight sampling around stationary point
+
   subroutine TestVariational(self,filepath,dH_Disc,mode,rmode,R,N)
     implicit none
-    class(VCANB),intent(inout)::self
-    character(*),intent(in)::filepath
-    character(32),intent(in):: dH_Disc
-    integer,intent(in)::mode
-    real*8,intent(in) ::rmode
+    class(VCANB),intent(inout):: self
+    character(*),intent(in)   :: filepath
+    character(32),intent(in)  :: dH_Disc
+    integer,intent(in)        :: mode
+    real*8,intent(in)         ::rmode
     real*8,intent(in) ::R
     integer,intent(in)::N
     !-----------------------------------------------------
-    real*8::mid,r1,r2,v
+    real*8::mid,r1,r2,v,y
     integer::jc,print
     print = self%getprint()
 
@@ -263,7 +267,9 @@ contains
     do jc = 1 , n
        v = getr(mode,rmode,r1,mid,r2,jc,n,print)
        call self%DelH%SetValueByDiscription(dH_Disc,v)
-       write(99,*)v,self%Wafu%GetLatticeOmegaPerSite()
+      !  y = self%Wafu%GetLatticeOmegaPerSite()
+       y = GetY(self,mode)
+       write(99,*)v, y
     enddo
     close(99)
     !-----------------------
@@ -279,8 +285,8 @@ contains
       real*8::s
       getr = (r2-r1)/n * (jc-0.5_8) + r1
       select case(mode)
-      case(0)
-      case(1)
+      case(0,2,4)
+      case(1,3,5)
         l = abs(getr - mid)
         s = sign(1._8,getr - mid)
         getr = ( l / (mid - r1) ) ** rmode
@@ -289,7 +295,27 @@ contains
         write(print,*)"ERROR: Unknow mode =",mode," in TestVariational@VCA";stop
       endselect
     endfunction
+
+    real*8 function GetY(self,mode)
+      implicit none
+      class(VCANB),intent(inout):: self
+      integer,intent(in)::mode
+      !----------------------------------
+      select case(mode)
+      case(0,1)
+        GetY = self%Wafu%GetLatticeOmegaPerSite()
+      case(2,3)
+        GetY = self%Wafu%GetClusterOmegaPriPerSite()
+      case(4,5)
+        GetY = self%Wafu%GetLatticeIPerSite()
+      case DEFAULT
+        write(print,*)"ERROR: Unknow mode =",mode," in TestVariational@VCA,2";stop
+      endselect
+    endfunction
+
   endsubroutine
+
+
 
   ! see the illstration of TestVariational
   ! file will be named by discription and put on FolderPath
@@ -340,7 +366,7 @@ contains
     type(LH)::r
     !-----------------------------------
     integer::spini,spinj
-    complex*16,allocatable::M(:,:)                          
+    complex*16,allocatable::M(:,:)
     r = self%CPTH
     call r%AbsorbMeanFiled(self%DelH%GetIdataArray())
     !-----------------
