@@ -4,7 +4,7 @@
 ! NAME  : VCA_NB_MAIN
 ! OBJECT: TYPE(VCANB)
 ! USED  : CodeObject,fermion_table,LaPrimaryH,LatticeConfig,LaLatticeH,VCA_DeltaH,VCA_WaldFun,CEsolver,VCA_Variation
-! DATE  : 2017-12-30
+! DATE  : 2018-01-27
 ! AUTHOR: hengyueli@gmail.com
 !--------------
 ! Open-Source : No
@@ -71,9 +71,16 @@
 !                          test a stationary point (on one direction.).
 !                          the testing range is in [o-R,o+R] where o is the recent value.
 !
-!                          mode = 0 : Homoginouse distribution
-!                          mode = 1 : Weight sampling around stationary point.
-!                          mode = 2 : only check Omega'    (Omega = Omega' -I)
+!                            test a stationary point (on one direction.).
+!                            the testing range is in [o-R,o+R] where o is the recent value.
+!                           for Omega = Omega' - I
+!
+!                            mode = 0 :  (Omega)  Homoginouse distribution
+!                            mode = 1 :  (Omega)  weight sampling around stationary point
+!                            mode = 2 :  (Omega') Homoginouse distribution
+!                            mode = 3 :  (Omega') weight sampling around stationary point
+!                            mode = 4 :  (I     ) Homoginouse distribution
+!                            mode = 5 :  (I     ) weight sampling around stationary point
 !
 !
 !                   [sub] TestAllVariational(FolderPath,mode,rmode,R,N)
@@ -244,7 +251,8 @@ contains
   ! mode = 1 :  (Omega)  weight sampling around stationary point
   ! mode = 2 :  (Omega') Homoginouse distribution
   ! mode = 3 :  (Omega') weight sampling around stationary point
-
+  ! mode = 4 :  (I     ) Homoginouse distribution
+  ! mode = 5 :  (I     ) weight sampling around stationary point
   subroutine TestVariational(self,filepath,dH_Disc,mode,rmode,R,N)
     implicit none
     class(VCANB),intent(inout):: self

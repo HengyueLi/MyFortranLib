@@ -5,7 +5,7 @@
 ! NAME  : VCA_DeltaH
 ! OBJECT: TYPE(VCAdH)
 ! USED  : CodeObject,LatticeConfig,LaPrimaryH,functionalsubs,basic_math_functions,FermionHamiltonian
-! DATE  : 2018-01-05
+! DATE  : 2018-01-27
 ! AUTHOR: hengyueli@gmail.com
 !--------------
 ! Open-Source : No
@@ -96,6 +96,9 @@
 !                   [fun] GetValueByIndex(i)
 !                         integer::i
 !                         return real*8
+!
+!                   [fun] GetAlpha()
+!                         real*8::GetAlpha
 !
 !                   [fun] GetTotNbyHow(how)
 !                         character(3)::how

@@ -4,7 +4,7 @@
 ! NAME  : VCA_Variation
 ! OBJECT: TYPE(VCAva)
 ! USED  : CodeObject , VCA_DeltaH , VCA_WaldFun , Msearchsaddle , functionalsubs
-! DATE  : 2018-01-07
+! DATE  : 2018-01-27
 ! AUTHOR: hengyueli@gmail.com
 !--------------
 ! Open-Source : No
@@ -73,6 +73,10 @@
 !                          real*8            ,intent(in)           :: jobr(:)
 !                          integer           ,intent(in) ,optional :: print_,show_
 !
+!                          jobi(1) : order of min and max
+!                          jobi(2) : mode  to select a method
+!                          jobi(3) : show
+!
 !                            deltaX= jobr(1)
 !                            prX   = jobr(2)
 !                            prY   = jobr(3)
@@ -82,6 +86,9 @@
 !                           dAlpha = jobr(6)    ! step of alpha
 !                           Alpham = jobr(7)    ! tolarence of small alpha
 !
+!
+!
+
 ! avalable gets:
 !                   [fun] G
 !
@@ -283,7 +290,7 @@ end subroutine
     self%sd%Varant => self
     call self%sd%Initialization(order=self%jobi(1) , mode= self%jobi(2) ,&
                   nmax= self%dh%GetTotN_Var_max(),nmin=self%dh%GetTotN_Var_min(),&
-                  Maxitra = 2000,showdetails=self%jobi(6),&
+                  Maxitra = 2000,showdetails=self%jobi(3),&
                   deltaX= self%jobr(1),&
                   prX   = self%jobr(2),&
                   prY   = self%jobr(3),&

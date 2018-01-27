@@ -7,7 +7,7 @@
 ! NAME  : class_integration
 ! OBJECT: TYPE(Integration)
 ! USED  : CodeObject , LegendreFun
-! DATE  : 2018-01-02
+! DATE  : 2018-01-27
 ! AUTHOR: hengyueli@gmail.com
 !--------------
 ! Open-Source : No
@@ -127,7 +127,6 @@ private::GetOneXW
       !--------------------------------------------------
       TYPE(LegF)::f
       real*8::delta
-
       select case(self%typecase)
       case(0)  ! homoginious distribution
         delta=2._8/N

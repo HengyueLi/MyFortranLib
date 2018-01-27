@@ -6,7 +6,7 @@
 ! NAME  : VCA_WaldFun
 ! OBJECT: TYPE(waldf)
 ! USED  : CodeObject , LaLatticeH , VCA_DeltaH , CEsolver , CE_Green , CreateKspace , fermion_table , class_numerical_method
-! DATE  : 2018-01-07
+! DATE  : 2018-01-27
 ! AUTHOR: hengyueli@gmail.com
 !--------------
 ! Open-Source : No
@@ -45,6 +45,32 @@
 !                          -----------------------
 !                          jobi(1)   = method
 !                          jobi(2:4) = n1,n2,n3 the samoling points on each direction in Kspace.
+!
+!                          select case :
+!                          ===========================
+!                          method = 2
+!                          Arc intergration
+!                            jobr(1) = arc R. The scale of circle
+!                            jobr(2) = theta. A small angle used to treat the near-zero problem.
+!                            jobi(5) = sampling points in R part(large part).
+!                            jobi(6) = sampling points in theta regime.
+!                          ===========================
+!                          method = 3
+!                          square intergration   (select summation number on image axis)
+!                            jobi(5):Nx  (from -R to R)
+!                            jobi(6):Ny  in each side
+!                            jobr(1):R   (range to enclose regime)
+!                            jobi(7) is summation number on image axis
+!                          ===========================
+!                          method = 4
+!                          square intergration   (select summation length on image axis)
+!                            jobi(5):Nx  (from -R to R)
+!                            jobi(6):Ny  in each side
+!                            jobr(1):R   (range to enclose regime)
+!                            jobr(2) is summation length on image axis
+!
+!
+!
 !
 ! avalable gets:
 !
@@ -255,7 +281,9 @@ module VCA_WaldFun
 
 
   private::Initialization,Finalization
-  private::AllocateIntergrationPath,AllocateIntergrationPath_method2
+  private::AllocateIntergrationPath
+  private::AllocateIntergrationPath_method2
+  private::AllocateIntergrationPath_method34
   private::GetSavingGandGrandPotetial
   private::FuncF,GetVkMatrix,GetI,GetLatticeOmegaPerSite
   private::ReccorectI
@@ -327,6 +355,8 @@ contains
     select case(self%jobi(1))
     case(2)
       call AllocateIntergrationPath_method2(self)
+    case(3,4)
+      call AllocateIntergrationPath_method34(self)
     case default
       write(self%getprint(),*)"ERROR: Unknow method in waldf@AllocateIntergrationPath"
       write(self%getprint(),*)"input method = jobi(1)=",self%jobi(1)
@@ -374,6 +404,88 @@ contains
      !----------------
      self%IntOmega(-1) =  0.0002 *  (1.0_8,1._8)/dsqrt(2.0_8)
      self%IntOmega( 0) =  0.0001 *  (1.0_8,1._8)/dsqrt(2.0_8)
+  endsubroutine
+
+
+
+  !jobi(5):Nx  (from -R to R)
+  !jobi(6):Ny  in each side
+  !jobr(1):R   (range to enclose regime)
+  !
+  ! for method3 : jobi(7) is summation number on image axis
+  ! for method4 : jobr(2) is summation length on image axis
+  subroutine AllocateIntergrationPath_method34(self)
+    implicit none
+    class(waldf),intent(inout)  :: self
+    !----------------------------------------------
+    real*8,parameter::Pi=3.141592653589793238462643383279_8
+    complex*16,parameter::CI = (0._8,1._8)
+    !==============================================
+    TYPE(Integration)::intex,intey
+    TYPE(phyfun)::f
+    real*8::xx(self%jobi(5)),wx(self%jobi(5)),xy(self%jobi(6)),wy(self%jobi(6)),LenY
+    integer::SumN,Seg1,Seg2,Seg3,Seg4,jc
+    real*8::T
+
+    T = self%temperature
+
+    call intex%Initialization(  self%jobi(5) , 1)
+    call intey%Initialization(  self%jobi(6) , 1)
+
+
+    if ( self%jobi(1) == 3 )then
+      SumN = self%jobi(7)
+    else
+      SumN = int( ( self%jobr(2)/pi/T + 1.0_8 ) / 2 )
+    endif
+
+    !---------------------------
+    ! at least 1 is required
+    if ( SumN < 1 ) SumN = 1
+    !---------------------------
+    ! integration range on Y
+    LenY = 2 * SumN * Pi * T
+
+
+    self%IntNomega = SumN + 2 * self%jobi(6) + self%jobi(5)
+
+    Seg1 = self%jobi(5)
+    Seg2 = Seg1 + self%jobi(6)
+    Seg3 = Seg2 + self%jobi(6)
+    Seg4 = self%IntNomega
+
+    call intex%get_xw( -self%jobr(1) , self%jobr(1) ,xx ,wx)
+    call intey%get_xw( 0.0_8         , LenY         ,xy ,wy)
+
+    allocate(  self%IntOmega(self%IntNomega)                                     )
+    allocate(  self%IntOmegaWeight(self%IntNomega)                               )
+    allocate(  self%SavedG(self%IntNomega,self%ta%get_ns()*2,self%ta%get_ns()*2) )
+    !       1      ->   Seg1
+    !     .............................
+    !     . Seg2      . IntNomega     . Seg3
+    !     .  ^        .  ^            .  ^
+    !     .  |        .  |            .  |
+    !     .Seg1+1     .Seg3+1         . Seg2+1
+    !
+    self%IntOmega( 1        :  Seg1 ) = xx            + LenY * CI
+    self%IntOmega( Seg1 + 1 :  Seg2 ) = -self%jobr(1) + xy   * CI
+    self%IntOmega( Seg2 + 1 :  Seg3 ) =  self%jobr(1) + xy   * CI
+    do jc = 1 , SumN
+       self%IntOmega( Seg3 + jc ) = ( 2 * jc - 1 ) * pi * T  * CI
+    enddo
+    !======================================================================
+    do jc = 1 , Seg1
+        self%IntOmegaWeight( jc ) = wx(jc) * CI/2._8/pi * f%FermionFunc( real(self%IntOmega(jc)),T)
+    enddo
+    !-----------------------------------------------------------
+    do jc = 1 , self%jobi(6)
+       self%IntOmegaWeight( Seg1 + jc ) =   wy(jc) * CI / 2._8 / pi &
+                                           * f%FermionFunc(  self%IntOmega(Seg1 + jc) ,T)
+       self%IntOmegaWeight( Seg2 + jc ) = - wy(jc) * CI / 2._8 / pi &
+                                           * f%FermionFunc(  self%IntOmega(Seg2 + jc) ,T)
+    enddo
+    !-----------------------------------------------------------
+    self%IntOmegaWeight( Seg3 + 1 : Seg4 ) = T
   endsubroutine
 
 
@@ -505,7 +617,7 @@ contains
        ReccorectI = (x1*y2-y1*x2)/(x1-x2)
        ReccorectI = ReccorectI / 4  !  degree = 90.   ->  d/2Pi
        ReccorectI = ReccorectI * 2  !  upper and lower plane
-    endselect                       !  WRITE(*,*)ReccorectI,y1,y2
+    endselect                         !;WRITE(*,*)ReccorectI,y1,y2
   endfunction
 
   real*8 function GetI(self)
