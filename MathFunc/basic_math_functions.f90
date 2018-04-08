@@ -27,13 +27,17 @@
 !                         Get a random integer in range [start,endto]
 !                         if input are integer*4, return integer*4
 !                         if input are integer*8, return integer*8
+!
 !                  [sub] get_x_range_equal_interval_p(nx,start,endto,x):
 !                             integer(8)nx; real(8)::start,endto,x(nx)
 !                             creat a list of real(8) value range from start to endto
+!
 !                  [sub] get_random_array(A)
 !                        real(8)/complex(8)::A(:)
+!
 !                  [sub] get_normalized_array(A)
 !                        The same as get_radom_array, but keepy <A|A> = 1
+!
 !                  [fun] bcombination(m,n)
 !                        integer(8)::m,n  /  integer::m,n
 !                        integer*8::bcombination
@@ -47,6 +51,7 @@
 ! avalable Is :
 !                  [fun] IsTwoValuePercentageTheSame(E1,E2,rePre)
 !                        check two real*8 E1,E2 are the same or not with relavant different rePre
+!
 !                  [fun] IsIntegerArrayTheSame(IntArry)
 !                        input an integer array  check if all elemets are the same
 !
@@ -264,7 +269,7 @@ end function
         IsIntegerArrayTheSame = .true.
       else
         IsIntegerArrayTheSame = .false.
-      endif 
+      endif
     endfunction
 
 

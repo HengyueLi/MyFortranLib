@@ -84,6 +84,14 @@
 !                         Omega = Omega' - I
 !                         return I
 !
+!                   [fun] GetOmegaValue(typeid)
+!                         return real*8
+!                         integer::typeid
+!                         This is a inteface for all the get above.
+!                           typeid = 1 : GetLatticeOmegaPerSite()
+!                           typeid = 2 : GetClusterOmegaPriPerSite()
+!                           typeid = 3 : GetLatticeIPerSite()
+!
 !
 ! avalable is :
 !                  ![fun] i
@@ -277,6 +285,7 @@ module VCA_WaldFun
     procedure,pass::GetLatticeOmegaPerSite
     procedure,pass::GetClusterOmegaPriPerSite
     procedure,pass::GetLatticeIPerSite
+    procedure,pass::GetOmegaValue
   endtype
 
 
@@ -289,6 +298,7 @@ module VCA_WaldFun
   private::ReccorectI
   private::GetClusterOmegaPriPerSite
   private::GetLatticeIPerSite
+  private::GetOmegaValue
 
 contains
 
@@ -666,7 +676,23 @@ contains
   endfunction
 
 
-
+  real*8 function GetOmegaValue(self,typeid)
+    IMPLICIT NONE
+    class(waldf),intent(inout)  :: self
+    integer                     :: typeid
+    !--------------------------------------
+    select case(typeid)
+    case(1)
+      GetOmegaValue = self%GetLatticeOmegaPerSite()
+    case(2)
+      GetOmegaValue = self%GetClusterOmegaPriPerSite()
+    case(3)
+      GetOmegaValue = self%GetLatticeIPerSite()
+    case default
+      write(self%getprint(),*)"Unknow typeid=",typeid,'in GetOmegaValue@VCA_Waldfun'
+      stop
+    endselect
+  endfunction
 
 
 

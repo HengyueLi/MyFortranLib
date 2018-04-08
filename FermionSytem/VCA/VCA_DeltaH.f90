@@ -25,10 +25,19 @@
 !                 "OrbitalCDW"           E = jobr(1) ,Qm = jobr(2:4)
 !                                        oi= jobi(1), oj = jobi(2)
 !
+!
+!                  The definition is the ESDW in PRB,85, 165135 (2012)
 !                 "OrbitalESDW"          E = jobr(1) ,Qm = jobr(2:4)
 !                                        oi= jobi(1), oj = jobi(2)
 !
 !
+!                 "OrbitalECDW"          E = jobr(1) ,Qm = jobr(2:4)
+!                                        oi= jobi(1), oj = jobi(2)
+!                 ( a comprehensive test is not done yet. )  
+!
+!
+!          UPDATE 20180405:
+!                          For a quick appending, notice that 3 place need to be modified.
 ! USING LIST:
 !            :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 !
@@ -207,6 +216,7 @@ module VCA_DeltaH
    procedure,pass::AppendDeltaAF
    procedure,pass::AppendOrbitalCDW
    procedure,pass::AppendOrbitalESDW
+   procedure,pass::AppendOrbitalECDW
    procedure,pass::GetDelatMatrix
    procedure,pass::SetValueByDiscription
    procedure,pass::GetValueByDiscription
@@ -231,7 +241,8 @@ module VCA_DeltaH
   endtype
 
   private::Initialization,StartAppending,EndAppending!,Append
-  private::AppendDeltaAF,AppendOrbitalCDW,AppendOrbitalESDW
+  private::AppendDeltaAF,AppendOrbitalCDW
+  private::AppendOrbitalESDW,AppendOrbitalECDW
   private::GetDelatMatrix
   private::SetValueByDiscription,GetValueByDiscription
   private::CheckNarOverflow,SetToUpperCase
@@ -417,6 +428,28 @@ endsubroutine
 
 
 
+subroutine AppendOrbitalECDW(self,E,Qm,oi,oj,discription)
+  implicit none
+  class(VCAdH),intent(inout)::self
+  real*8,intent(in)::E,Qm(3)
+  integer,intent(in)::Oi,Oj
+  character(DiscLen),intent(in)::discription
+  !---------------------------------------
+  call CheckAllowedAppendOrStop(self )
+  self%Nvar = self%Nvar + 1
+  call CheckNarOverflow(self)
+  self%var(self%Nvar)%vtype      = "ORBITALECDW"
+  self%var(self%Nvar)%disc       = discription
+  self%var(self%Nvar)%v          = E
+  self%var(self%Nvar)%rpara(1:3) = Qm
+  self%var(self%Nvar)%ipara(1)   = oi
+  self%var(self%Nvar)%ipara(2)   = oj
+  self%var(self%Nvar)%how        = "MIN"
+  ! call SetToUpperCase(self,self%Nvar)
+endsubroutine
+
+
+
 
 
 subroutine checkNmaxSamll(self,i)
@@ -502,6 +535,35 @@ SUBROUTINE GetIdataArrayFromVarType(self,Var ,idataarry,n)
           endif
        enddo
     enddo
+  case("ORBITALECDW")
+    oi = var%ipara(1)
+    oj = var%ipara(2)
+    do jci = 1 , self%Lconf%GetNs()
+       do jcj = jci + 1 , self%Lconf%GetNs()
+          pi = self%Lconf%GetSiteP(jci)
+          pj = self%Lconf%GetSiteP(jcj)
+          o1 = self%Lconf%GetOrbitIndex(jci)
+          o2 = self%Lconf%GetOrbitIndex(jcj)
+          if ( sum( abs(pi-pj) )==0 )then
+             if (  ( (o1==oi) .and. (o2==oj)  ) .or. ( (o2==oi) .and. (o1==oj)  ) )then
+               !-----------------------------
+               !  site jci,jcj
+               expiqr = Zexp( sum( self%Lconf%GetSiteRealP(jci) * Var%rpara(1:3) ) * (0._8,1._8) )
+               I%Itype="SpinHopping"
+               I%Para(1) = jci   ;  i%Para(2) = jcj
+               do spin = 0 , 1
+                  I%para(3) = spin
+                  I%v =   expiqr *  var%v
+                  n = n + 1
+                  call checkNmaxSamll(self,n)
+                  idataarry(n) = i
+               enddo
+             endif
+          endif
+       enddo
+    enddo
+  case default
+    write(*,*)'Unknow type in GetIdataArrayFromVarType@VCA_DeltaH=',trim(adjustl(Var%Vtype))
   endselect
 
 endsubroutine
@@ -523,9 +585,11 @@ endsubroutine
    case("DELTAAF" )
      call self%AppendDeltaAF(jobr(1),jobr(2:4),discription)
    case("ORBITALCDW")
-     CALL SELF%AppendOrbitalCDW(jobr(1),jobr(2:4),JOBI(1),JOBI(2),discription)
+     CALL SELF%AppendOrbitalCDW( jobr(1),jobr(2:4),JOBI(1),JOBI(2),discription)
    case("ORBITALESDW")
      call self%AppendOrbitalESDW(jobr(1),jobr(2:4),JOBI(1),JOBI(2),discription)
+   case("ORBITALECDW")
+     call self%AppendOrbitalECDW(jobr(1),jobr(2:4),JOBI(1),JOBI(2),discription)
    case default
      write(self%getprint(),*)"ERROR: Unknow variational type:",type;stop
    endselect
