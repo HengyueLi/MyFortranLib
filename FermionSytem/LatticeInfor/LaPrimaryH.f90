@@ -6,7 +6,7 @@
 ! NAME  : LaPrimaryH
 ! OBJECT: TYPE(PH)
 ! USED  : CodeObject,functionalsubs,CPTInterType
-! DATE  : 2017-12-23
+! DATE  : 2018-05-14
 ! AUTHOR: hengyueli@gmail.com
 !--------------
 ! Open-Source : No
@@ -38,7 +38,7 @@
 !                         Itype can be checked in module FermionHamiltonian
 !                         Only for the terms that the first two elements in para(8) represent sites can be used.
 !
-!                         The format of the interacting can be checked in FermionHamiltonian,they are the same. 
+!                         The format of the interacting can be checked in FermionHamiltonian,they are the same.
 !
 !                   [sub] EndAppending()
 !
