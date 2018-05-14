@@ -47,6 +47,8 @@
 !                                   omega  │    │
 !                                          └────┘         (Notice the order of Omega)
 !                                             k
+!                         #  WARNNING:  to check GpriMatrix is inverse or not in the definition.
+!                                       说明可能有点问题，但是程序没问题。
 !
 !
 !                   [sub] GetReducedGkbyOmegaArrayAndKArray(spini,spinj,OmegaArray,KArray,OrbitalList,g)
@@ -91,7 +93,19 @@
 !                   [sub] Get_K_DOS_to_file(self,spini,spinj,No,o1,o2,eta,OrbitalList,k,file)
 !                         calculate the DOS at one K point.
 !
+!                   [sub] GetEnergySurfacesDosInKspace(Energy,Karray,spini,spinj,OrbitalList,eta,Dos)
+!                          real*8,intent(in) ::Energy
+!                          real*8,intent(in) ::Karray(:,:)           !klist(3,l)
+!                          integer,intent(in)::spini,spinj
+!                          integer,intent(in)::OrbitalList(:)
+!                          real*8,intent(in) ::eta
+!                          real*8,intent(out)::Dos(4,size(Karray,2))  ! Dos(4,l)  Dos(:,l) = k1,k2,k3,intensity
+!                          for a input Karray (which define a space we want) output the dos
 !
+!                   [sub] GetEnergySurfacesDosInFirstBrillouinZone(Energy,nk3,spini,spinj,OrbitalList,eta,Dos)
+!                         similar to GetEnergySurfacesDosInKspace, the only different is
+!                         use nk3(3) to generate Karray automatically.
+!----------------------------------------------------------------------------
 !
 ! avalable is :
 !                  ![fun] i
@@ -133,6 +147,8 @@ module CPT_ARPES
     procedure,pass::GetARPES_spectral_to_file
     procedure,pass::Get_Lattic_Dos_to_file
     procedure,pass::Get_K_DOS_to_file
+    procedure,pass::GetEnergySurfacesDosInKspace
+    procedure,pass::GetEnergySurfacesDosInFirstBrillouinZone
 
   endtype
 
@@ -144,6 +160,9 @@ module CPT_ARPES
   private::GetARPES_spectral_to_file
   private::Get_Lattic_Dos_to_file
   private::Get_K_DOS_to_file
+  private::GetEnergySurfacesDosInKspace
+  private::GetBrillouinZoneUniformKpoint
+  private::GetEnergySurfacesDosInFirstBrillouinZone
 
 contains
 
@@ -183,7 +202,7 @@ contains
     real*8,intent(in)          :: k(3)
     complex*16,intent(out)     :: Gk(self%ns,self%ns)
     !-------------------------------------------------------------
-    TYPE(nummethod)::f                                      
+    TYPE(nummethod)::f
      Gk = GInvsMatrix - self%CPTh%GetTqPrimatrix(k,spini,spinj)
     call f%MatrixInverse(self%ns,gk)
   endsubroutine
@@ -476,6 +495,70 @@ contains
       write(200,*)real(omega(jc)),-imag(g(jc))/pi
     enddo
     close(200)
+  endsubroutine
+
+
+  subroutine GetEnergySurfacesDosInFirstBrillouinZone(self,Energy,nk3,spini,spinj,OrbitalList,eta,Dos)
+    implicit none
+    class(ARPES),intent(inout) :: Self
+    real*8,intent(in) ::Energy
+    integer,intent(in)::nk3(3)
+    integer,intent(in)::spini,spinj
+    integer,intent(in)::OrbitalList(:)
+    real*8,intent(in) ::eta
+    real*8,intent(out)::Dos(4,nk3(1)*nk3(2)*nk3(3))        ! Dos(4,l)  Dos(:,l) = k1,k2,k3,intensity
+    !----------------------------------------------------------------------------
+    real*8::Kpoints(3,nk3(1)*nk3(2)*nk3(3))
+    call GetBrillouinZoneUniformKpoint(self,nk3,Kpoints)
+    call GetEnergySurfacesDosInKspace(self,Energy,Kpoints,spini,spinj,OrbitalList,eta,Dos)
+  endsubroutine
+
+  subroutine GetEnergySurfacesDosInKspace(self,Energy,Karray,spini,spinj,OrbitalList,eta,Dos)
+    implicit none
+    class(ARPES),intent(inout) :: Self
+    real*8,intent(in) ::Energy
+    real*8,intent(in) ::Karray(:,:)           !klist(3,l)
+    integer,intent(in)::spini,spinj
+    integer,intent(in)::OrbitalList(:)
+    real*8,intent(in) ::eta
+    real*8,intent(out)::Dos(4,size(Karray,2))        ! Dos(4,l)  Dos(:,l) = k1,k2,k3,intensity
+    !----------------------------------------------------------------------------
+    real*8,parameter::pi = 3.141592653589793238462643383279_8
+    complex*16::GpriInvs(1,self%ns,self%ns),OmegaArray(1),g(1,size(Karray,2)),Gpri(self%ns,self%ns)
+    integer::jc
+    TYPE(nummethod)::f
+
+    OmegaArray = Energy + (0._8,1._8) * eta
+    call self%GreenFun%GetGreenMatrix(spini,spinj,Size(OmegaArray),OmegaArray,GpriInvs)
+    Gpri = GpriInvs(1,:,:)
+    call f%MatrixInverse(self%ns,Gpri)
+    GpriInvs(1,:,:) = Gpri
+    call GetReducedGkOmegaMatrix(self,spini,spinj,GpriInvs,OrbitalList,Karray,g)
+    do jc = 1 , size(Karray,2)
+       Dos(1:3,jc) = Karray(:,jc)
+       Dos(4  ,jc) = -imag( g(1,jc) )/pi
+    enddo
+
+  endsubroutine
+
+  !Kpoints(3,l)  l = nk3(1) * nk3(2) * nk3(3)
+  subroutine GetBrillouinZoneUniformKpoint(self,nk3,Kpoints)
+    implicit none
+    class(ARPES),intent(inout) :: Self
+    integer,intent(in)::nk3(3)
+    real*8,intent(out)::Kpoints(3,nk3(1)*nk3(2)*nk3(3))
+    !-------------------------------------------------------
+    type(Kspace) :: Ks
+    real*8::aLC(3,3)
+    integer::jc
+
+    aLC = self%lattice%GetVp()
+    call Ks%Initialization( a= aLC, n=nk3 ,meshtype=0,print_=self%getprint() )
+
+    do jc = 1 , ks%getnk()
+       Kpoints(:,jc) = ks%getk(jc)
+    enddo
+
   endsubroutine
 
 

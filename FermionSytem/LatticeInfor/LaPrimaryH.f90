@@ -37,7 +37,9 @@
 !                         complex*16          :: Ivalu
 !                         Itype can be checked in module FermionHamiltonian
 !                         Only for the terms that the first two elements in para(8) represent sites can be used.
-
+!
+!                         The format of the interacting can be checked in FermionHamiltonian,they are the same. 
+!
 !                   [sub] EndAppending()
 !
 !
