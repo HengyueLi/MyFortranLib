@@ -65,7 +65,7 @@
 !                          integer,intent(in)::spini,spinj,No
 !                          real*8,intent(in)::o1,o2,eta
 !                          integer,intent(in)::OrbitalList(:)  ! if one do not care orbital, input all orbitals.
-!                          real*8,intent(in)::Klist(:,:)           !klist(3,l)
+!                          real*8,intent(in)::Klist(:,:)           !klist(3,l)   l is the typical point in K space.
 !                          integer,intent(in)::Kstep
 !                          character(*),intent(in)::file
 !
