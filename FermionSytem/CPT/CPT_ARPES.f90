@@ -69,6 +69,10 @@
 !                          integer,intent(in)::Kstep
 !                          character(*),intent(in)::file
 !
+!                   [sub] GetARPES_spectral_to_file2(...)
+!                         see  GetARPES_spectral_to_file for details
+!                         The different is: for the input OrbitalList, only diagonal terms of the Green's are considered.
+!
 !                   [sub] GetIntergrationOfGkInKpsace(spini,spinj,OmegaArray,nk3,OrbitalList,g)
 !                          implicit none
 !                          integer,intent(in)::spini,spinj
@@ -145,6 +149,7 @@ module CPT_ARPES
     procedure,pass::GetReducedGkOmegaMatrix
     procedure,pass::GetReducedGkOmegaMatrixbyGpara
     procedure,pass::GetARPES_spectral_to_file
+    procedure,pass::GetARPES_spectral_to_file2
     procedure,pass::Get_Lattic_Dos_to_file
     procedure,pass::Get_K_DOS_to_file
     procedure,pass::GetEnergySurfacesDosInKspace
@@ -158,7 +163,7 @@ module CPT_ARPES
   private::GetReducedGkOmegaMatrix
   private::GetReducedGkOmegaMatrixbyGpara
   private::GetARPES_spectral_to_file
-  private::Get_Lattic_Dos_to_file
+  private::Get_Lattic_Dos_to_file,GetARPES_spectral_to_file2
   private::Get_K_DOS_to_file
   private::GetEnergySurfacesDosInKspace
   private::GetBrillouinZoneUniformKpoint
@@ -404,6 +409,49 @@ contains
     enddo
     close(9541)
   endsubroutine
+
+
+  subroutine GetARPES_spectral_to_file2(self,spini,spinj,No,o1,o2,eta,OrbitalList,Klist,Kstep,file)
+    implicit none
+    class(ARPES),intent(inout) :: Self
+    integer,intent(in)::spini,spinj,No
+    real*8,intent(in)::o1,o2,eta
+    integer,intent(in)::OrbitalList(:)
+    real*8,intent(in)::Klist(:,:)           !klist(3,l)
+    integer,intent(in)::Kstep
+    character(*),intent(in)::file
+    !--------------------------------------------------------------------------------------
+    real*8,parameter::pi = 3.141592653589793238462643383279502884_8
+    complex*16::g( No,   Kstep* (size( Klist,2 ) - 1) )
+    complex*16::gi(No,   Kstep* (size( Klist,2 ) - 1) )
+    real*8::KArray(3,  Kstep* (size( Klist,2 ) - 1)   )
+    integer::jc1 , ol(1)
+    character(32)::Nkc
+    character(128)::form
+
+    !---------------------------------------------------------------------------
+    ! get All K points from Klist
+    Call Get_ARPES_K_Points(self,Klist,Kstep,KArray)               !;write(*,*)KArray
+
+    do jc1 = 1 , size(OrbitalList)
+      ol = OrbitalList(jc1)
+      call GetReducedGkOmegaMatrixbyGpara(self,spini,spinj,No,o1,o2,eta,ol,KArray,gi)
+      g = g + gi
+    enddo
+    g = g  / size(OrbitalList)
+
+
+
+    write(Nkc,*)Kstep* (size( Klist,2 ) - 1)
+    form = "("//trim(adjustl(Nkc))//"ES22.14)"
+    open(9541,file=trim(adjustl(file)))
+    do jc1 = No , 1 , -1
+       write(9541,trim(adjustl(form)),advance='no') -imag(g(jc1,:))/pi  ;write(9541,*)
+    enddo
+    close(9541)
+  endsubroutine
+
+
 
   subroutine GetIntergrationOfGkInKpsace(self,spini,spinj,OmegaArray,nk3,OrbitalList,g)
     implicit none
